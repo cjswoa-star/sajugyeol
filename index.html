@@ -2768,7 +2768,6 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
   }
 }
 </style>
-<script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=993"></script>
 </head>
 <!-- v10.2: external loader removed; verified logo embedded; calculation engine unchanged -->
 <body>
@@ -11867,7 +11866,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
         // PERSONAL DATE DOMAIN: 오늘이 출생 전인 미래 출생 명조는 출생일을 최초 운세 선택일로 사용한다.
         // 출생 전 날짜로 fortuneLayers 등 개인 운세 판정이 실행되지 않게 한 뒤, 사용자가 오늘 버튼을 누르면 공통 setter가 이유를 안내한다.
         const initialFortuneDate=isPersonalFortuneDateSupported(new Date())?new Date():getPersonalFortuneMinDate();
-        setSelectedFortuneDate(initialFortuneDate,{resetPurpose:true,resetView:true});renderProfile();renderPillars();renderDaYun();renderOverview();renderLearningCard();renderPracticalConsultation();renderBeginner();renderColorGuide();renderMaster();renderStructure();renderGyeok();renderSeasonPower();renderVoid();renderElements();renderTenGods();renderPositions();renderStages();renderNatalShinsal();renderRelations();currentRange="today";$$(".tab").forEach(b=>b.classList.toggle("active",b.dataset.range==="today"));renderDomainCenter();renderFlow();$("#expertDetails").removeAttribute("open");show("result");
+        setSelectedFortuneDate(initialFortuneDate,{resetPurpose:true,resetView:true});renderProfile();renderPillars();renderDaYun();renderOverview();renderLearningCard();renderPracticalConsultation();renderBeginner();renderColorGuide();renderMaster();renderStructure();renderGyeok();renderYongshin();renderSeasonPower();renderVoid();renderElements();renderTenGods();renderPositions();renderStages();renderNatalShinsal();renderRelations();currentRange="today";$$(".tab").forEach(b=>b.classList.toggle("active",b.dataset.range==="today"));renderDomainCenter();renderFlow();$("#expertDetails").removeAttribute("open");show("result");
       }catch(err){console.error("사주결 계산 오류",err);const raw=String(err&&err.message||err||'');if(/출생지 경도|1908\.4\.1 이전|경계 구간|일광절약시간제/.test(raw))return fail(raw);fail(friendlyCalculationError(err,calendarChoice()))}
     });
     function renderProfile(){
@@ -13884,7 +13883,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       if(mainExample)mainExample.innerHTML=`<b>생활에서는 이렇게 보입니다</b>${mainUser.example}`;
     }
     function refreshExpertActualNow(){
-      const actualNow=getActualNowDate();renderColorGuide(actualNow);renderGyeok();renderTenGods();
+      const actualNow=getActualNowDate();renderColorGuide(actualNow);renderGyeok();renderYongshin(actualNow);renderTenGods();
     }
     function renderPositions(){
       const meanings={year:["根 · 뿌리","조상·가문·초년·넓은 사회 환경을 살피는 자리"],month:["苗 · 싹","부모·형제·성장 환경·사회생활의 기반을 살피는 자리"],day:["花 · 꽃","나 자신과 배우자·현재 삶의 중심을 살피는 자리"],time:["實 · 열매","자녀·성과·미래 계획·말년을 살피는 자리"]};
