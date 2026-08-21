@@ -11862,7 +11862,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
         birthLunar=candidate.civilLunar;natal=candidate.natal;
         const correctedSolar=candidate.correction.solar,civilSolar=candidate.civilSolar,dayunRange=unknown?unknownDayunRange(unknownAudit.candidates,gender):null;
         profile={name:$("#name").value.trim(),gender:genderValue,date,solarDate:civilSolar.toYmd(),correctedSolarDate:correctedSolar.toYmd(),calendar:cal,time:unknown?"시간 미상":$("#birthTime").value,unknown,timeBasis:opts.timeBasis,longitude:opts.longitude,ziRule:opts.ziRule,correction:candidate.correction,correctedTime:`${String(correctedSolar.getHour()).padStart(2,'0')}:${String(correctedSolar.getMinute()).padStart(2,'0')}`,unknownAudit,dayunRange};
-        structureState=analyzeStructure();tenGodSystemCache=null;
+        structureState=analyzeStructure();tenGodSystemCache=null;resetCrossSubmitState();
         // PERSONAL DATE DOMAIN: 오늘이 출생 전인 미래 출생 명조는 출생일을 최초 운세 선택일로 사용한다.
         // 출생 전 날짜로 fortuneLayers 등 개인 운세 판정이 실행되지 않게 한 뒤, 사용자가 오늘 버튼을 누르면 공통 setter가 이유를 안내한다.
         const initialFortuneDate=isPersonalFortuneDateSupported(new Date())?new Date():getPersonalFortuneMinDate();
@@ -12246,7 +12246,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       const yearText=currentYear?.seun?`${currentYear.year}년은 ‘${currentYear.tone.label}’에 가깝습니다. ${currentYear.tone.text}`:'올해는 타고난 사주와 현재 10년 흐름을 중심으로 살펴봅니다.';
       const childText=profile?.unknown?'자녀·말년은 출생시간이 없어 세부 판단을 보류합니다.':c.child.headline;
       const paragraphs=[
-        `${name} <strong>${c.seed.ganji} 태어난 날의 기운</strong>을 포함해 전체 구조를 함께 봤습니다. ${c.life.temperament} ${c.ilju.confirmed.length?'태어난 날에서 보이는 기본 성향이 계절·전체 힘·관계 구조에서도 같은 방향으로 확인되는 부분만 강조했습니다.':'태어난 날 하나의 특징보다 계절과 전체 힘의 배치가 더 강하게 드러나는 부분은 그쪽을 우선해 해석했습니다.'}`,
+        `${name} 태어난 날 한 글자보다 전체 구조를 먼저 봤습니다. ${c.life.judgment?.reason||c.life.temperament} ${c.life.judgment?.reality||''} ${c.ilju.confirmed.length?'태어난 날에서 보이는 기본 성향이 계절·전체 힘·관계 구조에서도 같은 방향으로 확인되는 부분만 보강했습니다.':'태어난 날 하나의 특징보다 계절과 전체 힘의 배치가 더 강하게 드러나는 부분은 그쪽을 우선해 해석했습니다.'}`,
         `<strong>일과 돈</strong>은 서로 영향을 주지만 같은 문제는 아닙니다. ${c.life.work} ${c.life.money} 큰 기회를 한 번 맞히려 하기보다, 잘하는 역할을 오래 쓰고 돈을 지킬 규칙을 만드는 것이 더 중요합니다.`,
         `<strong>가까운 관계</strong>에서는 ${c.life.romance} ${childText}`,
         `<strong>지금</strong>은 ${currentDecadeText} ${yearText} 올해의 선택은 이 10년의 방향 안에서 크기와 속도를 조절해 판단하세요.`
@@ -12273,7 +12273,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       el.innerHTML=`<div class="consult-story-shell"><div class="consult-compact-identity"><div class="consult-identity-main">${name} · ${natal.getDay()}일주 · 출생 ${fortuneKoreanDate(birthDate)}</div></div><section class="consult-story-hero"><span class="consult-story-kicker">인생풀이</span><h2>상담사가 풀어주는 내 인생</h2><p class="consult-hero-lead">실제 현재 ${fortuneKoreanDate(actualNow)}은 출생일 이전입니다. 현재·올해 개인 운세는 출생 이후부터 제공합니다.</p></section><section class="consult-story-section is-night consult-basic-section"><div class="consult-section-head"><span class="consult-section-index">NOW</span><div><h3>현재 상태</h3><p>운세에서 고른 미래 날짜를 실제 현재로 바꾸지 않습니다.</p></div></div><div class="consult-final-action"><b>ACTUAL NOW</b><strong>출생 전 · 현재·올해 개인 운세 제공 안 함</strong><span>운세 메뉴의 선택 날짜는 미래 날짜 탐색일 뿐, 인생풀이의 ‘현재·지금·올해’ 기준이 되지 않습니다.</span></div></section><section class="consult-story-section is-paper consult-basic-section"><div class="consult-section-head"><span class="consult-section-index">01</span><div><h3>타고난 기본 결</h3><p>출생시점과 무관하게 원국에서 확인 가능한 구조만 보여드립니다.</p></div></div><div class="consult-first-word"><small>핵심 구조</small><strong>${life.core}</strong><p>${life.temperament}</p></div><div class="consult-real-life"><h4>삶의 영역에서 보이는 기본 방식</h4><div class="consult-example-list"><div class="consult-example"><b>일</b><span>${life.work}</span></div><div class="consult-example"><b>재물</b><span>${life.money}</span></div><div class="consult-example"><b>관계</b><span>${life.romance}</span></div></div></div><div class="consult-analysis-body"><div class="consult-anchor"><b>격국</b><strong>${gy?.name||'한 가지로 좁히지 않음'} · ${gy?.status||''}</strong></div><div class="consult-anchor"><b>용신·희신 후보</b><strong>${coreY}</strong></div></div></section><section class="consult-story-section is-paper consult-flow-section"><div class="consult-section-head"><span class="consult-section-index">02</span><div><h3>출생 이후의 큰 흐름</h3><p>아래는 현재 운세가 아니라 출생 이후 예정된 10년 흐름을 탐색하는 영역입니다.</p></div></div><div class="consult-example-list">${decadeHtml||'<div class="consult-example"><b>향후</b><span>계산 가능한 대운 범위를 확인합니다.</span></div>'}</div></section><button class="app-page-next journey-next consult-next-step" type="button" data-app-next="domainCard">생활에서 어떻게 나타나는지 보기 <span>→</span></button></div>`;
     }
     function renderPracticalConsultation(referenceDate=null){
-      const el=$('#practicalConsultCard');if(!el||!natal)return;const actualNow=getActualNowDate();if(isBeforePersonalBirth(actualNow)){renderPreBirthPracticalConsultation(actualNow);return}referenceDate=actualNow;const integrated=buildIntegratedConsultation(referenceDate),c=integrated.base,d=c.domains,life=c.life,topThree=buildConsultTopThree(integrated,referenceDate);
+      const el=$('#practicalConsultCard');if(!el||!natal)return;const actualNow=getActualNowDate();if(isBeforePersonalBirth(actualNow)){renderPreBirthPracticalConsultation(actualNow);return}referenceDate=actualNow;const integrated=buildIntegratedConsultation(referenceDate),c=integrated.base,d=c.domains,life=c.life,topThree=buildConsultTopThree(integrated,referenceDate);el.setAttribute('data-judgment-id',life.judgmentId||'');
       const card=(label,obj,base,caution)=>`<div class="consult-verdict"><div class="vh"><b>${label}</b></div><strong>${obj.direct||obj.headline}</strong><p>${base||obj.n?.now||obj.body||''}</p>${caution||obj.caution?`<p class="direct-caution"><b>주의할 점</b> ${caution||obj.caution}</p>`:''}</div>`;
       const current=c.current,good=c.decades.filter(x=>x.balance.kind==='support').slice(0,3),watch=c.decades.filter(x=>x.balance.kind==='burden'||x.balance.kind==='mixed').slice(0,3),fmt=x=>x?`${x.startAge}~${x.endAge}세 · ${x.startYear}~${x.endYear}년 · ${x.ganji} ${x.tone.label}`:'뚜렷한 구간 없음';
       const allDecades=c.decades.map(x=>`<div class="decade-line ${x.current?'current':''}"><b>${x.startAge}~${x.endAge}세<br>${x.ganji}${x.current?' · 현재':''}</b><span><strong>${x.tone.label}</strong><br>${x.summary}<br>${x.startYear}~${x.endYear}년</span></div>`).join('');
@@ -12333,16 +12333,32 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       return `${lead} ${capacity}${links.length?' '+links.slice(0,3).join(' '):''}`;
     }
 
+    function buildNatalSynthesisState(){
+      const s=structureState,g=natal.getDayGan(),stem=analyzeDayStemContext(),gy=analyzeGyeok(s),strength=effectiveStrengthForDecision(s),ys=s?.yongshin||{};
+      let socialTen=gy?.ten&&tenText[gy.ten]?gy.ten:cnTen(natal.getMonthShiShenGan());if(!tenText[socialTen])socialTen='비견';
+      const social=tenUserCopy[socialTen]||tenUserCopy.비견,useful=[...new Set(s?.finalUsefulElements||[])],burden=[...new Set(confirmedBurdenElements(s))],relItems=(buildNatalRelationSystem().items||[]).filter(x=>['강','보통'].includes(x.strength));
+      const primaryRel=relItems.find(x=>(x.members||[]).some(m=>m.key==='day'))||relItems[0]||null;
+      const usefulText=useful.length?`${useful.map(elementName).join(' · ')}을 살리는 방향`:'용신을 한 가지로 좁히지 않은 상태';
+      const burdenText=burden.length?`${burden.map(elementName).join(' · ')}이 과해질 때의 부담`:'확정 부담 오행을 따로 두지 않은 상태';
+      const gyeokText=gy?.name||'격의 형태를 하나로 좁히지 않음',relationText=primaryRel?`${primaryRel.text} (${primaryRel.status})`:'강하게 우선할 합충 관계 없음';
+      const headline=`${stem.profile.name}의 기본 결 위에 ${strength.userLabel}의 힘 배치가 놓이고, ${usefulText}을 기준으로 ${gyeokText}의 ${social.label} 역할을 쓰는 구조입니다.`;
+      const reason=`일간 ${g}${ganKo[g]} 하나로 결론내리지 않고, 강약 ${strength.userLabel}, ${usefulText}, ${burdenText}, 격국 ${gyeokText}, 실제 관계 ${relationText}, 사회 십신 ${social.label}을 함께 묶어 판단했습니다.`;
+      const reality=`생활에서는 ${social.good} ${stem.profile.easy} ${primaryRel?`다만 ${primaryRel.status} 신호가 있는 자리에서는 관계와 역할이 실제로 어떻게 묶이거나 흔들리는지 함께 봅니다.`:''}`;
+      const action=useful.length&&elementAction[useful[0]]?elementAction[useful[0]]:(strength.direction==='WEAK'?'지원·준비·회복을 확보한 뒤 중요한 역할부터 맡으세요.':strength.direction==='STRONG'?'이미 가진 힘을 결과와 책임으로 바꾸는 일부터 선택하세요.':social.good);
+      const judgmentId=['NATAL',g,strength.status,strength.userLabel,useful.join(''),burden.join(''),gy?.stateCode||gy?.status||gy?.name||'GY_UNRESOLVED',socialTen,primaryRel?.id||'REL_NONE'].join('|');
+      const trace={judgmentId,dayStem:g,strength:{status:strength.status,label:strength.userLabel,direction:strength.direction,reason:strength.reason},useful,burden,gyeok:{name:gyeokText,status:gy?.status||'',stateCode:gy?.stateCode||null,ten:gy?.ten||null},socialTen,relation:primaryRel?{id:primaryRel.id,type:primaryRel.type,status:primaryRel.status,text:primaryRel.text}:null};
+      window.__SAJUGYEOL_JUDGMENT_TRACE__=trace;
+      return {judgmentId,headline,reason,reality,action,trace,socialTen};
+    }
     function natalLifeSummary(){
-      const s=structureState,g=natal.getDayGan(),e=elem[g],plain=elementPlain[e],stem=analyzeDayStemContext(),gy=analyzeGyeok();
-      let socialTen=gy.ten&&tenText[gy.ten]?gy.ten:cnTen(natal.getMonthShiShenGan());if(!tenText[socialTen])socialTen="비견";const social=tenText[socialTen];
+      const s=structureState,g=natal.getDayGan(),e=elem[g],plain=elementPlain[e],stem=analyzeDayStemContext(),gy=analyzeGyeok(),judgment=buildNatalSynthesisState();
+      let socialTen=judgment.socialTen;const social=tenText[socialTen];
       const socialPlain=tenUserCopy[socialTen]||tenUserCopy.비견,stemPlain=stemUserCopy[g]||{plain:stem.profile.easy,example:stem.profile.gift};
       const dayTen=mainHiddenTen(natal.getDayHideGan()),dayCopy=tenText[dayTen]||tenText.비견,dayRelations=natalRelationList().filter(x=>x.includes("일주"));
-      const strengthCopy=strengthDecisionCopy(s),strengthDecision=strengthCopy.decision,strengthNote=strengthDecision.contested?strengthDecision.reason:(strengthEasy[strengthDecision.userLabel]||strengthDecision.reason),strong=strengthDecision.direction==='STRONG',weak=strengthDecision.direction==='WEAK',contested=strengthDecision.contested;
-      const powerDirection=strengthCopy.powerDirection;
-      const core=`${stemPlain.plain} ${powerDirection} 사회생활에서는 ${withJosa(socialPlain.identity,'이/가')} 가장 눈에 띄는 강점입니다.`;
+      const strengthCopy=strengthDecisionCopy(s),strengthDecision=strengthCopy.decision,strengthNote=strengthDecision.contested?strengthDecision.reason:(strengthEasy[strengthDecision.userLabel]||strengthDecision.reason);
+      const core=judgment.headline;
       const seed=buildIljuSeedProfile(),ilju=buildIljuCorroboration(seed,{socialTen,dayTen}),iljuNote=ilju.confirmed.length?` 일주 편람의 ${naturalList(ilju.confirmed)}도 전체 명식에서 같은 방향으로 확인되어 이 성향을 보강합니다.`:'';
-      const temperament=`${stemPlain.plain} ${stemPlain.example}${iljuNote}`;
+      const temperament=`${judgment.reality} ${stemPlain.example}${iljuNote}`;
       const strength=`${socialPlain.good} ${strengthCopy.strengthAdvice}`;
       const relSys=buildNatalRelationSystem(),dayConflict=relSys.items.some(x=>['충','형','삼형','파','해','천간충'].includes(x.type)&&(x.members||[]).some(m=>m.key==='day'));
       const caution=`${socialPlain.caution} ${plain.over} ${strengthCopy.cautionAdvice}${ilju.cautions.length?` 일주 편람의 주의점 중에서도 ${ilju.cautions[0]}이 전체 구조와 겹칩니다.`:''}`;
@@ -12350,7 +12366,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       const work=`일에서는 ${withJosa(socialPlain.identity,'이/가')} 중심 강점입니다. ${socialPlain.good} ${strengthCopy.workAdvice}`;
       const money=buildNatalMoneyNarrative();
       let romance=`${withJosa(tenUserCopy[dayTen]?.identity||dayCopy.domains[2],'이/가')} 가까운 관계에서 두드러집니다.`;if(dayConflict)romance+=` 관계 자리의 충돌·재조정 신호가 있어, 이미 갈등이 생기면 오래 묵히기보다 기대·거리·돈·가족 문제를 따로 나누어 대화하는 편이 좋습니다.`;else if(dayRelations.length)romance+=` 서로의 기대나 일정이 어긋날 때 한쪽 방식만 고집하기보다 바뀐 조건을 직접 확인하고 다시 맞추는 힘이 중요합니다.`;else romance+=" 마음을 추측하기보다 기대와 역할을 말로 확인할수록 관계의 장점이 잘 살아납니다.";
-      return {core,temperament,strength,caution,human,work,money,romance,socialTen,dayTen,strengthNote,ilju};
+      return {core,temperament,strength,caution,human,work,money,romance,socialTen,dayTen,strengthNote,ilju,judgment,judgmentId:judgment.judgmentId};
     }
     function quickLayerInfo(layer,bundle){
       if(!layer)return {label:"아직 시작 전",text:"아직 적용되는 10년 운이 시작되기 전이므로 타고난 사주와 올해 흐름을 중심으로 봅니다.",example:"첫 대운이 시작되기 전에는 생활 환경과 가족의 영향이 더 크게 나타날 수 있습니다."};
@@ -13163,7 +13179,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
     function renderBeginner(){
       const life=natalLifeSummary(),baseDate=new Date(selectedFortuneDate),fortuneBaseDate=sameCalendarDay(baseDate,new Date())?new Date():baseDate,bundle=fortuneLayers(fortuneBaseDate,'today'),yr=bundle.layers.find(x=>x.key==="세운"),mo=bundle.layers.find(x=>x.key==="월운"),day=bundle.layers.find(x=>x.key==="일운"),yrInfo=quickLayerInfo(yr,bundle),moInfo=quickLayerInfo(mo,bundle),dayInfo=quickLayerInfo(day,bundle),isToday=sameCalendarDay(baseDate,new Date()),dateLabel=`${baseDate.getMonth()+1}월 ${baseDate.getDate()}일`,dayPillar=`${natal.getDayGan()}${natal.getDayZhi()}`;
       const actualNow=getActualNowDate(),actualBeforeBirth=isBeforePersonalBirth(actualNow),actualBundle=actualBeforeBirth?null:fortuneLayers(actualNow,'today'),actualDy=actualBundle?.layers?.find(x=>x.key==="대운")||null,actualDyInfo=actualBundle?quickLayerInfo(actualDy,actualBundle):{label:'출생 전',text:'아직 출생 전이라 현재 시점의 개인 운세는 제공하지 않습니다.'},actualState=actualBeforeBirth?{kind:'prebirth',date:actualNow,currentIndex:null,possibleIndices:[],unknown:!!profile?.unknown}:getDayunCurrentState(actualNow),actualCopy=actualBeforeBirth?{short:'출생 전',title:'출생 전',gan:'—',sentence:'아직 출생 전이라 현재 시점의 개인 운세는 제공하지 않습니다.'}:dayunStateUserCopy(actualState),actualCurrent=actualState.kind==='current'&&actualState.currentIndex!=null?daYunItems[actualState.currentIndex]:null,futureDecade=daYunItems.find(x=>x.getStartYear()>actualNow.getFullYear()),currentDecade=actualBeforeBirth?'아직 출생 전':actualState.kind==='uncertain'?'전환 가능 구간':actualCurrent?`${actualCurrent.getGanZhi()} · ${actualCurrent.getStartAge()}~${actualCurrent.getEndAge()}세`:futureDecade?`첫 대운 · ${futureDecade.getStartAge()}세 무렵`:'전환 경계',brief=text=>{const m=String(text||'').match(/^.*?[.!?](?:\s|$)/);return (m?m[0]:String(text||'')).trim()},selectedScopeBrief=(text,range)=>{const out=brief(text);if(isToday&&!actualBeforeBirth)return out;return range==='year'?out.replace(/^올해는\s*/,'선택한 해에는 '):range==='month'?out.replace(/^이번 달에는\s*/,'선택한 절기월에는 '):out.replace(/^오늘은\s*/,'선택한 날짜에는 ')};
-      const actionSource=[life.strength,life.caution,dayInfo.text].filter(Boolean).join(' '),actionMatch=actionSource.match(/[^.!?]*(?:집중|우선|확보|줄이|정하|확인|조절|활용|지키|낮추|완성|실행)[^.!?]*[.!?]/),actionLine=(actionMatch?actionMatch[0]:brief(life.strength)).trim();
+      const actionLine=life.judgment?.action||brief(life.strength);
       const ps=[
         {label:'시주',v:profile.unknown?null:natal.getTime(),ten:profile.unknown?'시간 미상':cnTen(natal.getTimeShiShenGan())},
         {label:'일주',v:natal.getDay(),ten:'나 자신',day:true},
@@ -13191,10 +13207,10 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
             <div class="sg-hanji-foot"><span>時</span><i></i><span>日</span><i></i><span>月</span><i></i><span>年</span></div>
           </div>
         </section>
-        <section class="sg-core-card">
+        <section class="sg-core-card" data-judgment-id="${life.judgmentId}">
           <svg class="sg-core-brush" viewBox="0 0 340 120" preserveAspectRatio="none" aria-hidden="true"><path d="M-10 93c61-49 105-44 146-8 39-49 83-57 126-11 26-20 52-22 94 4"/></svg>
           <div class="sg-core-emblem" aria-hidden="true"><span>☯</span></div>
-          <div class="sg-core-copy"><small>지금 내 사주의 핵심</small><strong>${brief(life.core)}</strong><p>${actionLine}</p></div>
+          <div class="sg-core-copy"><small>지금 내 사주의 핵심</small><strong>${life.judgment?.headline||life.core}</strong><p>${actionLine}</p></div>
           <button class="sg-core-next" type="button" data-app-next="practicalConsultCard">인생풀이 보기 <span>›</span></button>
         </section>
         <section class="sg-fortune-strip">
@@ -14122,7 +14138,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       const recommendedColors=colorNamesFor(colorElements,3,avoidColors),combination=colorCombination(colorElements,avoidColors);
       const avoidText=avoidElement?`오늘 일운에서 ${elementName(avoidElement)} 부담 신호가 겹치므로 ${lifeGuide[avoidElement].color} 계열을 넓은 면적으로 반복하지 않기`:`오늘만 따로 피할 색은 지정하지 않음${(c.very.length||c.excess.length)?` · 평소 ${[...c.very,...c.excess].map(e=>lifeGuide[e].color).join(' / ')} 계열은 넓은 면적 반복만 줄이기`:''}`;
       const integrationNote=hasDailyOverride?`오늘의 색은 원전의 별도 일진 색 공식이 아니라 앱 확장 기능입니다. 장기 보완색을 그대로 반복하지 않고, 오늘 일운에서 실제로 확인된 ${signals.map(x=>x.type).join('·')} 신호가 있을 때만 포인트색을 따로 지정했습니다.`:`오늘 일운에서 장기 보완색을 바꿀 만큼 뚜렷한 필요·부담 신호가 없어 ‘오늘만의 색’을 억지로 만들지 않았습니다. 아래 색은 평소 보완색 참고입니다.`;
-      const conflict=dayRels.some(x=>/충|형|파|해|원진/.test(x)),doAction=needElement?elementAction[needElement]:dayCopy.examples[0],reduceAction=dayDecision.kind==='burden'?'새 일·지출·약속을 한꺼번에 늘리는 행동':conflict?'즉석 결론, 감정 섞인 말, 변경된 일정 확인 없이 밀어붙이는 행동':'할 일을 과하게 벌이거나 준비만 길어지는 행동';
+      const conflict=dayRels.some(x=>/충|형|파|해|원진/.test(x)),dayTen=day?.ten||'비견',dayUser=tenUserCopy[dayTen]||tenUserCopy.비견,doAction=needElement?`${elementAction[needElement]} ${tenDecisionAction[dayTen]||''}`.trim():(tenWorkAction[dayTen]||dayCopy.examples[0]),reduceAction=dayDecision.kind==='burden'&&dayBurdens.length?`${dayBurdens.map(elementName).join(' · ')} 부담이 겹치는 날입니다. ${dayUser.caution}`:conflict?`${dayUser.caution} ${relationSentence(dayRels)}`:`${dayUser.caution} ${tenDecisionAction[dayTen]||''}`;
       const first=recommendedColors[0]||preferredColor(colorElements[0],'accent'),second=recommendedColors[1]||preferredColor(colorElements[0],'base');
       const clothing=hasDailyOverride?`${first}${second&&second!==first?`·${second}`:''}을 오늘의 포인트로 스카프·넥타이·양말·신발 중 한두 곳에 사용`:`오늘 전용 색은 별도 지정하지 않음. 평소 보완색을 쓰고 싶다면 ${first}${second&&second!==first?`·${second}`:''} 중 한 색만 작은 소품에 사용`;
       return {hasDailyOverride,signals,needElement,needProfile,needText:hasDailyOverride?signals.map(x=>`${elementName(x.element)} · ${x.reason}`).join(' / '):'일운에서 별도 추가 보완 오행을 확정하지 않음',coreEnergy:`${day?.ganji||''} · ${dayCopy.title} · ${theme.label}`,colorElements,recommendedColors,combination,avoidElement,avoidColors,avoidText,integrationNote,directionText:hasDailyOverride?`${colorElements.map(e=>lifeGuide[e].direction).filter((x,i,a)=>a.indexOf(x)===i).join(' · ')} 방향을 산책·좌석·책상 정리의 상징적 참고로만 사용`:'오늘 전용 방향은 별도 지정하지 않음',clothing,accessory:hasDailyOverride?`가방·지갑·시계줄·휴대폰 케이스·문구류 중 한 가지에 ${first} 계열 포인트`:`오늘 전용 소품색은 별도 지정하지 않음`,work:hasDailyOverride?`책상 매트·파일·노트·펜·작은 소품 중 한 곳에 ${second||first} 계열을 사용`:`오늘 전용 업무공간 색은 별도 지정하지 않음`,doAction,reduceAction,theme};
@@ -14162,24 +14178,33 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       if(joins.length)return '사람이나 일이 자연스럽게 이어질 수 있으니, 역할과 약속을 분명히 하면 장점이 살아납니다.';
       return '큰 충돌 신호는 두드러지지 않으므로, 지금 맡은 역할과 실제 준비 상태를 중심으로 판단하세요.';
     }
+    function buildFortuneSynthesisState(range,bundle,t){
+      const ten=mainTen(bundle),user=tenUserCopy[ten]||tenUserCopy.비견,ctx=targetPeriodContext(range,bundle,t),scope={today:'오늘',month:'이번 달',year:'올해'}[range]||'이 시기',allRelations=ctx.relations||[],kind=ctx.balance?.kind||'neutral';
+      const needed=[...new Set(ctx.balance?.needed||[])],burdens=[...new Set(ctx.balance?.burdens||[])],natalUseful=[...new Set(structureState?.finalUsefulElements||[])],natalBurden=[...new Set(confirmedBurdenElements(structureState))];
+      const hasClash=allRelations.some(x=>/충|형|파|해|원진/.test(x)),hasJoin=allRelations.some(x=>x.includes('합')),relTail=hasClash?' 합충 관계상 일정·역할·비용의 변동 조건도 함께 봅니다.':hasJoin?' 연결 신호가 있어 무엇이 묶이는지 역할과 조건을 함께 봅니다.':'';
+      const needText=needed.length?needed.map(elementName).join(' · '):'원국의 필요 기능',burdenText=burdens.length?burdens.map(elementName).join(' · '):'원국의 부담 기능';
+      const headline=kind==='support'?`${scope}은 ${needText}이 실제로 들어와 활용 쪽이 우세합니다.${relTail}`:kind==='burden'?`${scope}은 ${burdenText}이 겹쳐 조절 쪽이 우세합니다.${relTail}`:kind==='mixed'?`${scope}은 ${needText}과 ${burdenText}이 함께 들어와 골라 써야 하는 흐름입니다.${relTail}`:`${scope}은 필요·부담 어느 한쪽이 새로 우세하지 않아 원국의 기존 구조와 관계 조건을 중심으로 판단합니다.${relTail}`;
+      const layerTrace=(bundle.layers||[]).map(layer=>{const d=decisivePeriodBalance(layer.balance||periodBalance({gan:layer.gan,zhi:layer.zhi}));return {key:layer.key,ganji:layer.ganji,ten:layer.ten,rawKind:layer.balance?.kind||'neutral',kind:d.kind,needed:[...(d.needed||[])],burdens:[...(d.burdens||[])]}});
+      const reason=`원국 필요 ${natalUseful.length?natalUseful.map(elementName).join(' · '):'확정 후보 없음'} / 부담 ${natalBurden.length?natalBurden.map(elementName).join(' · '):'확정 후보 없음'} 위에 ${layerTrace.map(x=>`${x.key} ${x.ganji} ${x.kind}`).join(' → ')} 순서로 겹쳐 본 결과입니다. ${relationSentence(allRelations)}`;
+      const practical=needed.length&&elementAction[needed[0]]?`${elementAction[needed[0]]} ${tenDecisionAction[ten]}`:tenDecisionAction[ten];
+      const caution=burdens.length?`${burdenText} 부담이 겹치는 동안에는 ${user.caution}`:hasClash?`${user.caution} ${relationSentence(allRelations)}`:user.caution;
+      const traceId=['FORTUNE',isoDate(new Date(selectedFortuneDate)),range,kind,ten,needed.join(''),burdens.join(''),layerTrace.map(x=>`${x.key}:${x.kind}`).join('>'),hasClash?'CLASH':hasJoin?'JOIN':'REL_NONE'].join('|');
+      return {traceId,topicTen:ten,topicLabel:user.label,ctx,kind,needed,burdens,natalUseful,natalBurden,allRelations,layerTrace,headline,reason,practical,caution,safety:'큰돈·계약·건강·관계의 중요한 결정은 운세 문장만으로 확정하지 말고 실제 조건과 전문 정보를 함께 확인하세요.'};
+    }
     function periodNarrative(range,bundle,t){
-      const ten=mainTen(bundle),secondTen=secondaryTen(bundle),copy=tenText[ten]||tenText.비견,user=tenUserCopy[ten]||tenUserCopy.비견,secondUser=secondTen?(tenUserCopy[secondTen]||tenUserCopy.비견):null,ctx=targetPeriodContext(range,bundle,t),allRelations=ctx.relations,theme=ctx.theme,decisionKind=ctx.balance.kind,secondText=secondUser?` 함께 살필 부분은 ${secondUser.identity}입니다.`:'';
-      const prefix={today:'오늘',month:'이번 달',year:'올해'}[range],headline=user[range],gyeokLuck=range==='year'?evaluateGyeokLuck(new Date(selectedFortuneDate)):null,gyeokFlowEasy=gyeokLuck?.summary||'';
-      const core=`${withJosa(user.identity,'이/가')} 두드러집니다.${secondText} ${relationSentence(allRelations)}`;
+      const synth=buildFortuneSynthesisState(range,bundle,t),ten=synth.topicTen,secondTen=secondaryTen(bundle),copy=tenText[ten]||tenText.비견,user=tenUserCopy[ten]||tenUserCopy.비견,secondUser=secondTen?(tenUserCopy[secondTen]||tenUserCopy.비견):null,ctx=synth.ctx,allRelations=synth.allRelations,theme=ctx.theme,secondText=secondUser?` 함께 살필 부분은 ${secondUser.identity}입니다.`:'';
+      const headline=synth.headline,gyeokLuck=range==='year'?evaluateGyeokLuck(new Date(selectedFortuneDate)):null,gyeokFlowEasy=gyeokLuck?.summary||'';
+      const core=`주제는 ${withJosa(user.identity,'이/가')} 두드러집니다.${secondText} ${synth.reason}`;
       const work=`${copy.domains[0]}. ${tenWorkAction[ten]}`;
       const money=`${copy.domains[1]}. ${tenMoneyAction[ten]} 큰돈이 걸린 결정이라면 수익 기대보다 손실 한도·현금 흐름·계약 조건을 먼저 확인하세요.`;
       const people=`${copy.domains[2]}. ${tenPeopleAction[ten]}`;
       const meeting=allRelations.some(x=>/충|형|파|해|원진/.test(x))?'회의·약속은 시간·장소·담당을 재확인하고, 의견 차이가 생기면 즉석에서 승부를 내기보다 수정안을 남기세요.':allRelations.some(x=>x.includes('합'))?'협의와 공동 작업을 연결해 볼 수 있으나, 역할과 책임 범위를 먼저 적어 두세요.':`${tenPeopleAction[ten]} 중요한 대화는 핵심 요구를 한 문장으로 먼저 정리하세요.`;
-      const choice=tenDecisionAction[ten];
-      const use=`${user.good} ${tenWorkAction[ten]}`;
-      const caution=`${user.caution} ${allRelations.some(x=>/충|형|파|해|원진/.test(x))?'일정·말·비용이 바뀌지 않았는지 한 번 더 확인하세요.':'잘되는 방식도 지나치게 반복하지 않는 것이 중요합니다.'}`;
-      const hasClash=allRelations.some(x=>/충|형|파|해|원진/.test(x)),dailyRemember=decisionKind==='support'?`${withJosa(user.label,'을/를')} 실제 결과로 바꿀 한 가지를 끝내세요.${hasClash?' 다만 바뀐 일정·역할·비용은 먼저 확인하세요.':''}`:decisionKind==='burden'?`${withJosa(user.label,'을/를')} 무리하게 넓히기보다 오늘 줄일 일정·지출·책임 한 가지를 먼저 정하세요.`:decisionKind==='mixed'?`${withJosa(user.label,'을/를')} 쓸 일 가운데 조건이 가장 좋은 한 가지만 고르고 나머지는 보류하세요.`:hasClash?'바뀐 일정·역할·비용 가운데 하나를 먼저 확인한 뒤 가장 중요한 일 하나만 마무리하세요.':`${withJosa(user.label,'을/를')} 활용해 오늘 끝낼 한 가지를 정하세요.`;
-      const remember=range==='today'?dailyRemember:range==='month'?`이번 달에는 ${withJosa(user.label,'을/를')} 가장 잘 쓸 목표 한 가지를 정하고, 이 절기월 안에 결과로 남기세요.`:`올해는 ${withJosa(user.label,'을/를')} 기본 도구로 쓰되, 현재 10년의 큰 과제와 충돌하지 않도록 범위와 속도를 정하세요.`;
-      const continuity=range==='month'?`현재 10년의 과제와 올해의 흐름 위에서, 이번 달에는 ${withJosa(user.label,'이/가')} 더 구체적으로 드러납니다.`:range==='year'?`현재 10년의 큰 흐름 위에 올해는 ${withJosa(user.label,'이/가')} 중요한 과제로 더해집니다.`:`오늘의 흐름은 현재 10년과 올해·이번 달의 방향 안에서, 지금 무엇을 할지 고르는 데 사용합니다.`;
+      const choice=tenDecisionAction[ten],use=synth.practical,caution=synth.caution,remember=synth.reason;
+      const continuity=range==='month'?`현재 10년과 올해의 흐름 위에서 이번 절기월의 ${synth.kind} 판정을 봅니다.`:range==='year'?`현재 10년의 큰 배경 위에 올해의 ${synth.kind} 판정을 겹쳐 봅니다.`:`대운 → 세운 → 월운 → 일운 순서의 기존 판정 state를 유지한 채 오늘의 마지막 촉발을 봅니다.`;
       const family=`가족·가까운 관계에서는 ${tenPeopleAction[ten]} 특히 감정과 사실을 구분해 말하면 불필요한 확대를 줄일 수 있습니다.`;
       const growth=`${copy.domains[3]}. ${['정인','편인','식신'].includes(ten)?'배운 것을 기록·실험·결과물로 남기는 과정이 중요합니다.':'현재 맡은 역할에서 필요한 기술과 기준을 한 가지씩 보완하세요.'}`;
       const change=`${copy.domains[4]}. ${tenDecisionAction[ten]}`;
-      return {ten,second:secondUser?secondUser.label:null,secondTen,headline,core,work,money,people,meeting,choice,use,caution,remember,continuity,family,growth,change,theme,allRelations,gyeokLuck,gyeokFlowEasy};
+      return {ten,second:secondUser?secondUser.label:null,secondTen,headline,core,work,money,people,meeting,choice,use,caution,remember,continuity,family,growth,change,theme,allRelations,gyeokLuck,gyeokFlowEasy,synthesis:synth,traceId:synth.traceId,safety:synth.safety};
     }
         function periodCards(items){return `<div class="life-grid">${items.map(([label,text,wide])=>`<div class="life-item ${wide?'wide':''}"><b>${label}</b><span>${text}</span></div>`).join('')}</div>`}
     function monthCandidateReason(decision,clash,join){
@@ -14796,7 +14821,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       if(range==='year'){const fy=fortuneYearStart(date),items=monthsForFortuneYear(fy);return `<details class="fortune-more-details fortune-year-months"><summary>${fy}년 12절기월 흐름 보기</summary><div class="fortune-more-body"><div class="fortune-month-scroll">${items.map((m,i)=>{const rangeText=fortuneSolarRangeText(m.start,m.end,{referenceYear:fy,withTime:true});if(m.supported===false)return `<div class="month-chip"><b>${m.name}월 · ${m.gz}</b><span>${rangeText} 전</span><p><b>상태</b> ${m.unsupportedKind==='prebirth'?'출생 전 · ':''}${m.unsupportedReason}</p></div>`;const copy=tenText[m.ten]||tenText.비견,prev=i?items[i-1]:null,same=prev&&prev.supported!==false&&prev.ten===m.ten&&prev.theme.short===m.theme.short,role=same?'전월의 핵심 작용이 이어지는 구간':`${m.ten}의 ‘${tenEssence[m.ten]}’이 전면에 나오는 구간`;return `<div class="month-chip"><b>${m.name}월 · ${m.gz}</b><span>${rangeText} 전</span><p><b>역할</b> ${fortunePublicCopy(role)}</p><p><b>상태</b> ${fortunePublicCopy(m.theme.label)}</p><p><b>행동</b> ${fortunePublicCopy(tenWorkAction[m.ten])}</p></div>`}).join('')}</div></div></details>`;}
       return ''
     }
-    function fortuneTrace(range,date,bundle,narr,ctx,domains){window.__SAJUGYEOL_FORTUNE_TRACE__={range,date:isoDate(date),actualToday:fortuneIsActualDay(date),dayunState:ctx.state?.kind||'none',dayunCandidates:(ctx.candidates||[]).map(c=>c.dy.getGanZhi()),layers:(bundle.layers||[]).map(x=>({key:x.key,ganji:x.ganji,ten:x.ten,balance:x.balance?.kind})),headline:narr.headline,domains:domains.map(x=>({label:x.label,state:x.state,action:x.action||x.text}))}}
+    function fortuneTrace(range,date,bundle,narr,ctx,domains){const s=narr.synthesis||{};window.__SAJUGYEOL_FORTUNE_TRACE__={traceId:narr.traceId||s.traceId||'',range,date:isoDate(date),actualToday:fortuneIsActualDay(date),dayunState:ctx.state?.kind||'none',dayunCandidates:(ctx.candidates||[]).map(c=>c.dy.getGanZhi()),natal:{useful:s.natalUseful||[],burden:s.natalBurden||[]},target:{kind:s.kind||null,needed:s.needed||[],burdens:s.burdens||[],relations:s.allRelations||[]},layers:s.layerTrace||(bundle.layers||[]).map(x=>({key:x.key,ganji:x.ganji,ten:x.ten,rawKind:x.balance?.kind,kind:decisivePeriodBalance(x.balance)?.kind})),topicTen:s.topicTen||narr.ten,headline:narr.headline,reason:s.reason||narr.core,action:s.practical||narr.use,safety:narr.safety||'',domains:domains.map(x=>({label:x.label,state:x.state,action:x.action||x.text}))}}
 
     var fortuneViewMode='summary';
     function fortuneColorHex(name){for(const g of Object.values(lifeGuide||{})){for(const p of (g.palette||[])){if(p[0]===name)return p[1]}}return '#8b7768'}
@@ -14853,7 +14878,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       const calendarBasis=currentRange==='month'?(()=>{const mi=t.monthInfo||jieMonthInfo(referenceDate),fy=fortuneYearStart(referenceDate),rangeText=fortuneSolarRangeText(mi.start,mi.end,{referenceYear:referenceDate.getFullYear(),withTime:false});return `<div class="fortune-query-note fortune-calendar-basis"><b>날짜 기준</b><span>조회 날짜 ${fortuneKoreanDate(referenceDate)} · ${mi.name} 절기월 ${rangeText} · 세운 ${fy}년(입춘 기준)</span></div>`})():'';
       const technical=`<details class="fortune-engine-details"><summary>운이 왜 이렇게 나왔는지 · 전문 계산 근거</summary><div class="fortune-engine-body">${periodExplain(t,ten,copy,relations,balance,bundle)}<div class="structure-note"><b>10년 흐름과 함께 보면</b><br>${fortuneDayunContext(referenceDate,currentRange)}</div><div class="evidence-list">${evidenceHtml(bundle,t,stage,shin,relations)}</div><p>${currentRange==='year'?'선택한 해는 원국 → 대운 후보 → 세운까지 사용합니다.':currentRange==='month'?'선택한 절기월은 원국 → 대운 후보 → 세운 → 월운까지 사용합니다. 특정 하루의 일운은 월 전체 판단에서 제외합니다.':'선택한 날짜는 원국 → 대운 후보 → 세운 → 월운 → 일운을 사용하되 일운은 마지막 촉발 요인으로 읽습니다.'}</p></div></details>`;
       let legacyColor='';const colorShell=document.getElementById('colorShell');if(!u.uncertain){legacyColor=fortuneHtmlCopy(buildColorGuideMarkup(referenceDate),currentRange,referenceDate)}if(colorShell){colorShell.hidden=true;colorShell.removeAttribute('open')}
-      const summary=`${uncertainty}${calendarBasis}<section class="fortune-oracle"><div class="fortune-oracle-head"><small>${headerLabel}</small><span class="fortune-oracle-badge">${badge}</span></div><h3>${narr.headline}</h3><p>${narr.remember}</p></section><div class="fortune-action-pair"><div class="fortune-action-card is-use"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 살릴 것':'이 날짜에 살릴 것'):currentRange==='month'?'이 절기월에 살릴 것':'이 해에 살릴 것'}</small><strong>${fortunePublicCopy(useText)}</strong></div><div class="fortune-action-card is-reduce"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 줄일 것':'이 날짜에 줄일 것'):currentRange==='month'?'이 절기월에 줄일 것':'이 해에 줄일 것'}</small><strong>${fortunePublicCopy(reduceText)}</strong></div></div><section class="fortune-section"><div class="fortune-section-head"><h4>먼저 볼 생활영역</h4><small>신호가 선명한 3곳</small></div><div class="fortune-domain-list">${domainRows}</div></section>`;
+      const summary=`${uncertainty}${calendarBasis}<section class="fortune-oracle" data-judgment-id="${narr.traceId||''}"><div class="fortune-oracle-head"><small>${headerLabel}</small><span class="fortune-oracle-badge">${badge}</span></div><h3>${narr.headline}</h3><p>${narr.remember}</p></section><div class="fortune-action-pair"><div class="fortune-action-card is-use"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 살릴 것':'이 날짜에 살릴 것'):currentRange==='month'?'이 절기월에 살릴 것':'이 해에 살릴 것'}</small><strong>${fortunePublicCopy(useText)}</strong></div><div class="fortune-action-card is-reduce"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 줄일 것':'이 날짜에 줄일 것'):currentRange==='month'?'이 절기월에 줄일 것':'이 해에 줄일 것'}</small><strong>${fortunePublicCopy(reduceText)}</strong></div></div><p class="fortune-relative-note"><b>일반 안전 주의</b> ${narr.safety||''}</p><section class="fortune-section"><div class="fortune-section-head"><h4>먼저 볼 생활영역</h4><small>신호가 선명한 3곳</small></div><div class="fortune-domain-list">${domainRows}</div></section>`;
       const fields=`<section class="fortune-section"><div class="fortune-section-head"><h4>${currentRange==='today'?'오늘의 생활영역':currentRange==='month'?'이 절기월의 생활영역':'이 해의 생활영역'}</h4><small>전체 판단</small></div>${detailRows}</section>`;
       const living=fortuneColorPanelMarkup(referenceDate,currentRange,u,legacyColor);
       const week=currentRange==='today'?(u.uncertain?`<div class="fortune-query-note"><b>날짜 주변</b><span>대운 경계에 걸린 조회라 앞뒤 날짜의 단순 순위 비교는 보류합니다.</span></div>`:`<div class="fortune-query-note"><b>앞뒤 3일 비교</b><span>일운 차이를 짧게 비교합니다.</span></div>${weekChoices()}`):'';
@@ -15396,6 +15421,15 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
   }
 
   var bigFlowSelectedYear=null,bigFlowSelectedDayunIndex=null;
+  function resetCrossSubmitState(){
+    bigFlowSelectedYear=null;bigFlowSelectedDayunIndex=null;fortuneViewMode='summary';
+    var page=document.getElementById('dayunOverview');if(page)page.removeAttribute('data-bigflow-ready');
+    ['dayunDetail','bigFlowCompare','bigFlowYears','bigFlowEvidenceMeta','bigFlowNow'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=''});
+    var list=document.getElementById('dayunList');if(list){list.querySelectorAll('.selected,.current,.possible-current,.upcoming-first').forEach(function(x){x.classList.remove('selected','current','possible-current','upcoming-first')});list.scrollLeft=0}
+    var intro=document.getElementById('dayunIntro');if(intro)intro.innerHTML='';
+    window.__SAJUGYEOL_FORTUNE_TRACE__=null;window.__SAJUGYEOL_JUDGMENT_TRACE__=null;
+  }
+  window.resetCrossSubmitState=resetCrossSubmitState;
   function bigFlowActualNow(){return new Date()}
   function bigFlowActualYear(){return bigFlowActualNow().getFullYear()}
   function bigFlowDateSolar(date){return Solar.fromYmdHms(date.getFullYear(),date.getMonth()+1,date.getDate(),date.getHours?.()??12,date.getMinutes?.()??0,0)}
@@ -15679,8 +15713,8 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
     var genderValue=$c('input[name="compatGender"]:checked')?.value||'남',gender=genderValue==='남'?1:0,corrected=candidate.correction.solar,civil=candidate.civilSolar,dayunRange=unknown?unknownDayunRange(unknownAudit.candidates,gender):null;
     return {birthLunar:candidate.civilLunar,natal:candidate.natal,profile:{name:$c('#compatName').value.trim(),gender:genderValue,date:date,solarDate:civil.toYmd(),correctedSolarDate:corrected.toYmd(),calendar:cal,time:unknown?'시간 미상':$c('#compatBirthTime').value,unknown:unknown,timeBasis:timeBasis,longitude:longitude,ziRule:opts.ziRule,correction:candidate.correction,correctedTime:String(corrected.getHour()).padStart(2,'0')+':'+String(corrected.getMinute()).padStart(2,'0'),unknownAudit:unknownAudit,unknownDateStable:unknownAudit?unknownAudit.stable:true,dayunRange:dayunRange}};
   }
-  function saveRuntime(){return {natal:natal,birthLunar:birthLunar,profile:profile,structureState:structureState,currentDaYun:currentDaYun,daYunItems:daYunItems,tenGodSystemCache:tenGodSystemCache,selectedFortuneDate:selectedFortuneDate,currentRange:currentRange}}
-  function restoreRuntime(x){natal=x.natal;birthLunar=x.birthLunar;profile=x.profile;structureState=x.structureState;currentDaYun=x.currentDaYun;daYunItems=x.daYunItems;tenGodSystemCache=x.tenGodSystemCache;selectedFortuneDate=x.selectedFortuneDate;currentRange=x.currentRange}
+  function saveRuntime(){return {natal:natal,birthLunar:birthLunar,profile:profile,structureState:structureState,currentDaYun:currentDaYun,daYunItems:daYunItems,tenGodSystemCache:tenGodSystemCache,selectedFortuneDate:selectedFortuneDate,currentRange:currentRange,judgmentTrace:window.__SAJUGYEOL_JUDGMENT_TRACE__}}
+  function restoreRuntime(x){natal=x.natal;birthLunar=x.birthLunar;profile=x.profile;structureState=x.structureState;currentDaYun=x.currentDaYun;daYunItems=x.daYunItems;tenGodSystemCache=x.tenGodSystemCache;selectedFortuneDate=x.selectedFortuneDate;currentRange=x.currentRange;window.__SAJUGYEOL_JUDGMENT_TRACE__=x.judgmentTrace}
   function setupDayunForRuntime(referenceDate){var gender=profile.gender==='남'?1:0,yun=natal.getYun(gender);daYunItems=yun.getDaYun(12).filter(function(x){return x.getIndex()>0});var first=yun.getStartSolar();daYunItems.forEach(function(x){x._exactStart=first.nextYear((x.getIndex()-1)*10);x._exactEnd=first.nextYear(x.getIndex()*10)});currentDaYun=daYunForDate(referenceDate)}
   function personSnapshot(person,referenceDate){
     var old=saveRuntime();try{
