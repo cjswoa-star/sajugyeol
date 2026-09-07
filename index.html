@@ -12384,6 +12384,105 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       if(primaryRel.type==='반합'||primaryRel.type==='삼합'||primaryRel.type==='방합')return ' 사람과 환경이 같은 방향으로 모일 때는 공동 목표와 각자 몫을 분명히 해 두는 편이 좋습니다.';
       return ' 사람과 역할의 조건이 달라질 때는 기대와 책임을 말로 확인하는 편이 좋습니다.';
     }
+    const yongshinMethodRoleLabel={
+      climate:'조후 · 한난조습을 조절하는 필요 역할',
+      suppress:'억부 · 강약 균형을 맞추는 필요 역할',
+      disease:'병약 · 막힌 기능을 풀기 위한 藥 역할',
+      bridge:'통관 · 맞서는 기운 사이를 잇는 역할',
+      follow:'전왕·종격 · 구조가 따르는 방향',
+      gyeok:'격국 · 격을 성립·보호·구응하는 상신 역할',
+      gyeokYongshin:'격국용신 · 월령 구조의 주체',
+      suppressBurden:'억부 · 과해질 때 부담이 되는 역할'
+    };
+    function buildYongshinRoleProvenanceContract(base=structureState){
+      const ys=base?.yongshin||{},burdenSet=new Set(confirmedBurdenElements(base)),usefulSet=new Set(base?.finalUsefulElements||[]),byElement=new Map();
+      const summaryByElement=new Map((ys.summaries||[]).map(x=>[x.element,x]));
+      const resolutionByElement=new Map((ys.conflictResolution||[]).map(x=>[x.candidate,x]));
+      const ensure=e=>{if(!byElement.has(e))byElement.set(e,{element:e,roles:[]});return byElement.get(e)};
+      const unique=x=>[...new Set((x||[]).filter(Boolean).map(v=>String(v)))];
+      const sharedConflict=e=>{const s=summaryByElement.get(e)||{},r=resolutionByElement.get(e)||{};return unique([...(s.conflictNotes||[]),...(s.candidateRelations||[]),...(r.counterEvidence||[])]);};
+      const add=(e,row)=>{if(!e)return;ensure(e).roles.push({...row,element:e,conflict:sharedConflict(e)});};
+      Object.entries(ys.methods||{}).forEach(([key,m])=>{
+        (m?.candidates||[]).forEach(c=>add(c.element,{
+          method:key,methodLabel:m.label||key,role:yongshinMethodRoleLabel[key]||c.role||c.scope||'관법 후보',need:true,burden:false,
+          condition:c.resolutionStatus||m.status||'',priority:m.priority||'',reason:c.reason||'',confidence:c.confidence||m.confidence||'',
+          provenance:unique([c.ruleId,c.sourceLevel,...(c.provenance||[]),...(m.provenance||[])])
+        }));
+      });
+      if(ys.gyeokYongshin?.element)add(ys.gyeokYongshin.element,{
+        method:'gyeokYongshin',methodLabel:'格局用神 · 월령 구조의 주체',role:yongshinMethodRoleLabel.gyeokYongshin,need:false,burden:false,
+        condition:ys.gyeok?.stateCode||ys.gyeok?.status||'',priority:'STRUCTURE_ROLE',reason:ys.gyeokYongshin.reason||'',confidence:ys.gyeokYongshin.confidence||'',
+        provenance:unique([ys.gyeokYongshin.ruleId,ys.gyeokYongshin.sourceLevel])
+      });
+      const burdenRows=new Map((ys.burdenWhenExcess||[]).map(x=>[x.element,x]));
+      burdenSet.forEach(e=>{const b=burdenRows.get(e)||{};add(e,{
+        method:'suppressBurden',methodLabel:'扶抑 · 과다 부담',role:yongshinMethodRoleLabel.suppressBurden,need:false,burden:true,
+        condition:b.source||'CONFIRMED_BURDEN',priority:'CONDITIONAL_EXCESS',reason:b.reason||`${elementName(e)}은 현재 확정 강약 구조에서 더 과해질 때 부담으로 관리합니다.`,confidence:'',provenance:unique([b.source])
+      })});
+      const elements=[...byElement.values()].map(x=>{
+        const finalUseful=usefulSet.has(x.element),burden=burdenSet.has(x.element),needMethods=x.roles.filter(r=>r.need).map(r=>r.method),burdenMethods=x.roles.filter(r=>r.burden).map(r=>r.method);
+        return {...x,finalUseful,burden,overlap:finalUseful&&burden,needMethods:unique(needMethods),burdenMethods:unique(burdenMethods)};
+      }).sort((a,b)=>(b.overlap-a.overlap)||(b.finalUseful-a.finalUseful)||(b.burden-a.burden)||elementOrder.indexOf(a.element)-elementOrder.indexOf(b.element));
+      return {
+        finalUseful:[...usefulSet],finalBurden:[...burdenSet],elements,
+        overlaps:elements.filter(x=>x.overlap).map(x=>x.element),
+        contract:'J1_ROLE_PROVENANCE_V1',
+        principle:'관법별 candidate/role/reason/provenance와 최종 useful/burden을 함께 보존하며 어느 한쪽을 삭제하거나 다수결로 합치지 않는다.'
+      };
+    }
+    const elementEverydayFunction={목:'배우고 키우며 새 일을 확장하는 힘',화:'표현하고 실행하며 활동에 속도를 내는 힘',토:'흩어진 일과 생활을 정리하고 기반을 안정시키는 힘',금:'기준을 세우고 선택하며 불필요한 것을 덜어내는 힘',수:'정보를 모으고 흐름을 읽으며 생각할 여유를 확보하는 힘'};
+    const elementOverusePlain={목:'새 계획과 선택지를 계속 늘리는 것',화:'일정과 활동량이 이미 많은데 더 밀어붙이는 것',토:'정리와 책임을 지나치게 떠안아 움직임을 막는 것',금:'기준을 너무 촘촘하게 세워 선택과 관계를 잘라내는 것',수:'정보와 생각만 계속 쌓아 결정을 늦추는 것'};
+    function yongshinRoleEasyReason(role,e){
+      const name=elementName(e),subject=withJosa(name,'이/가'),everyday=elementEverydayFunction[e]||'생활에서 필요한 힘';
+      if(role?.method==='climate')return `조후에서는 ${subject} 계절의 차고 덥고 마르고 습한 균형을 조절하는 데 필요합니다.`;
+      if(role?.method==='suppress')return `억부에서는 ${subject} 전체 힘의 치우침을 맞추는 데 필요합니다.`;
+      if(role?.method==='disease')return `병약에서는 ${subject} ${everyday}이 막히지 않도록 보완하는 역할로 필요합니다.`;
+      if(role?.method==='bridge')return `통관에서는 ${subject} 맞서는 기운 사이의 흐름을 이어 주는 역할로 필요합니다.`;
+      if(role?.method==='gyeok')return `격국에서는 ${subject} 이 사주의 중심 구조가 제 역할을 하도록 돕는 쪽으로 확인됩니다.`;
+      if(role?.burden)return `억부에서는 ${subject} 더 많아지면 전체 힘의 균형에 부담이 될 수 있습니다.`;
+      return `${subject} 현재 구조에서 필요한 역할로 확인됩니다.`;
+    }
+    function buildRoleConflictInterpretationBridge(contract){
+      const rows=(contract?.elements||[]),focus=rows.find(x=>x.overlap)||rows.find(x=>x.finalUseful&&x.roles.filter(r=>r.need).length>1)||null;
+      if(!focus)return null;
+      const needRows=focus.roles.filter(r=>r.need),burdenRows=focus.roles.filter(r=>r.burden),needRoles=[...new Set(needRows.map(r=>r.role))],burdenRole=burdenRows[0],name=elementName(focus.element),needText=needRoles.length?naturalList(needRoles):'필요 역할';
+      const technical=focus.overlap?`${name}은 ${needText}로 필요성이 확인되지만, 억부에서는 과해질 때 부담이 되는 역할도 함께 유지됩니다.`:`${name}은 ${needText}처럼 서로 다른 관법의 역할이 함께 확인됩니다.`;
+      const needWhy=needRows.length?[...new Set(needRows.map(r=>yongshinRoleEasyReason(r,focus.element)))].join(' '):`${withJosa(name,'이/가')} 현재 구조에서 필요한 역할로 확인됩니다.`;
+      const burdenWhy=burdenRows.length?[...new Set(burdenRows.map(r=>yongshinRoleEasyReason(r,focus.element)))].join(' '):'';
+      const easy=focus.overlap?`${needWhy} ${burdenWhy} 그래서 ${withJosa(name,'이/가')} 좋다거나 나쁘다고 한쪽으로 말하는 것이 아니라, 필요한 역할은 쓰되 이미 충분한 때에는 더 늘리지 않는 것으로 해석합니다.`:`${needWhy} 같은 오행이라도 관법마다 확인하는 역할이 달라 한 가지 좋고 나쁨으로 줄이지 않습니다.`;
+      const fn=elementEverydayFunction[focus.element]||'현재 필요한 기능',over=elementOverusePlain[focus.element]||'이미 충분한데 같은 방식만 더 늘리는 것';
+      const life=focus.overlap?`생활에서는 ${withJosa(fn,'을/를')} 필요한 장면에서 분명하게 쓰세요. 다만 ${over}은 피하고, 일이 이미 커졌다면 새로 벌이기보다 범위와 속도를 줄여 마무리를 우선하는 편이 맞습니다.`:`생활에서는 ${withJosa(fn,'을/를')} 실제로 써 보되, 어느 역할 때문에 필요한지 확인하면서 범위를 정하는 편이 좋습니다.`;
+      const short=focus.overlap?`${needWhy} ${burdenWhy} 생활에서는 필요한 역할은 쓰되, 이미 충분한 때에는 같은 힘을 더 키우지 않는 것이 핵심입니다.`:`${needWhy} 관법마다 역할이 달라 쓰임을 나누어 봅니다.`;
+      return {element:focus.element,overlap:focus.overlap,technical,easy,life,short,needRoles,burdenRole:burdenRole?.role||null};
+    }
+    function buildFortuneRoleProvenanceContract(natalContract,needed,burdens,layerTrace){
+      const needSet=new Set(needed||[]),burdenSet=new Set(burdens||[]),natalBy=new Map((natalContract?.elements||[]).map(x=>[x.element,x])),all=[...new Set([...needSet,...burdenSet,...(natalContract?.finalUseful||[]),...(natalContract?.finalBurden||[])])];
+      return all.map(e=>({
+        element:e,natal:natalBy.get(e)||null,periodNeed:needSet.has(e),periodBurden:burdenSet.has(e),
+        layers:(layerTrace||[]).filter(x=>(x.needed||[]).includes(e)||(x.burdens||[]).includes(e)).map(x=>({key:x.key,ganji:x.ganji,need:(x.needed||[]).includes(e),burden:(x.burdens||[]).includes(e)}))
+      }));
+    }
+    function buildFortuneRoleConflictBridge(periodRoles){
+      const rows=periodRoles||[];
+      let x=rows.find(r=>r.natal?.finalUseful&&r.periodBurden)||rows.find(r=>r.natal?.burden&&r.periodNeed)||rows.find(r=>r.natal?.overlap&&(r.periodNeed||r.periodBurden));
+      if(!x)return null;
+      const name=elementName(x.element),natalNeed=(x.natal?.roles||[]).filter(r=>r.need),needWhy=natalNeed.length?[...new Set(natalNeed.map(r=>yongshinRoleEasyReason(r,x.element)))].join(' '):`${withJosa(name,'이/가')} 원국에서 보완 역할로 확인됩니다.`,fn=elementEverydayFunction[x.element]||'이 기운의 생활 기능';
+      if(x.natal?.finalUseful&&x.periodBurden)return {element:x.element,kind:'NATAL_USEFUL_PERIOD_BURDEN',easy:`${needWhy} 하지만 이 시기 계산에서는 같은 ${withJosa(name,'이/가')} 부담 쪽으로도 겹칩니다. 생활에서는 ${withJosa(fn,'을/를')} 완전히 끄기보다, 해야 할 만큼만 쓰고 일이 이미 커졌다면 속도와 범위를 줄이는 편이 맞습니다.`};
+      if(x.natal?.burden&&x.periodNeed)return {element:x.element,kind:'NATAL_BURDEN_PERIOD_NEED',easy:`원국에서는 ${withJosa(name,'이/가')} 과하면 부담이 되지만, 이 시기에는 그 역할이 제한적으로 필요합니다. 생활에서는 ${withJosa(fn,'을/를')} 필요한 일에만 쓰고, 같은 일을 계속 늘리는 방식은 피하는 편이 맞습니다.`};
+      return {element:x.element,kind:'NATAL_ROLE_OVERLAP',easy:`${needWhy} 동시에 원국에서 과해질 때의 부담도 함께 확인됩니다. 이 시기에는 ${withJosa(fn,'을/를')} 얼마나 많이 쓰느냐보다, 필요한 장면에만 정확히 쓰는지가 중요합니다.`};
+    }
+    const homeActionByTen={
+      비견:'내가 끝까지 책임질 일과 함께할 사람의 몫을 먼저 나눈 뒤 시작하세요.',
+      겁재:'시간·돈·역할의 한도를 먼저 정하고, 경쟁이 붙어도 한 번에 여러 선택을 잡지 마세요.',
+      식신:'이미 시작한 자료·작품·서비스 가운데 하나를 정해 마감까지 완성하세요.',
+      상관:'문제를 지적할 때는 바로 말하기보다 해결 방법과 근거를 함께 정리해 제안하세요.',
+      편재:'새 제안은 수익·비용·역할을 비교한 뒤 책임 범위가 분명한 것만 고르세요.',
+      정재:'예산과 마감을 먼저 적고, 정해 둔 범위 안에서 약속한 일을 끝까지 지키세요.',
+      편관:'급한 일이 몰리면 중요도와 마감 순서로 나누고 혼자 감당할 범위를 넘기지 마세요.',
+      정관:'평가·보고·책임이 있는 일은 공식 기준과 요구사항을 먼저 확인한 뒤 진행하세요.',
+      편인:'자료를 충분히 보되 조사만 길어지지 않도록 실제로 시험해 볼 한 가지를 정하세요.',
+      정인:'배운 내용과 조언을 정리한 뒤, 준비가 끝난 한 가지를 실제 일에 연결하세요.'
+    };
     function buildNatalSynthesisState(){
       const s=structureState,g=natal.getDayGan(),stem=analyzeDayStemContext(),gy=analyzeGyeok(s),strength=effectiveStrengthForDecision(s),ys=s?.yongshin||{};
       let socialTen=gy?.ten&&tenText[gy.ten]?gy.ten:cnTen(natal.getMonthShiShenGan());if(!tenText[socialTen])socialTen='비견';
@@ -12392,15 +12491,22 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       const usefulText=useful.length?`${withJosa(useful.map(elementName).join(' · '),'을/를')} 살리는 방향`:'용신을 한 가지로 좁히지 않은 상태';
       const burdenText=burden.length?`${withJosa(burden.map(elementName).join(' · '),'이/가')} 과해질 때의 부담`:'확정 부담 오행을 따로 두지 않은 상태';
       const gyeokText=gy?.name||'격의 형태를 하나로 좁히지 않음',relationText=primaryRel?`${primaryRel.text} (${primaryRel.status})`:'강하게 우선할 합충 관계 없음';
-      const stemPlain=stemUserCopy[g]?.plain||stem.profile.easy;
-      const headline=`${natalUserLeadByTen[socialTen]||social.good} ${stemHomeMeaning[g]||stemPlain} ${natalStrengthMeaning(strength,useful)}${natalRelationMeaning(primaryRel)}`;
+      const stemPlain=stemUserCopy[g]?.plain||stem.profile.easy,stemMeaning=stemHomeMeaning[g]||stemPlain;
+      const roleProvenance=buildYongshinRoleProvenanceContract(s),interpretationBridge=buildRoleConflictInterpretationBridge(roleProvenance);
+      const strengthWay=(strength.direction==='WEAK'||strength.userLabel==='신약')?'전체 힘은 약한 편이라 여러 일을 한꺼번에 떠안기보다 범위를 정하고 하나씩 끝낼 때 장점이 안정적으로 살아납니다.':(strength.direction==='STRONG'||strength.userLabel==='신강')?'전체 힘은 충분한 편이라 일을 계속 넓히기보다 목표를 좁혀 결과와 책임으로 연결할 때 장점이 오래 갑니다.':'전체 힘이 한쪽으로 크게 치우치지 않아 상황에 맞춰 속도와 범위를 조절할 때 장점이 안정적으로 이어집니다.';
+      const gyeokWhy=gy?.ten===socialTen?`${gyeokText}이 확인되어 ${social.identity}이 이 사주에서 중심 역할로 잡힙니다.`:`월령·격국·십신 구조를 함께 보면 ${social.identity}이 현실에서 가장 자주 쓰는 힘으로 잡힙니다.`;
+      const relationAdvice=primaryRel?natalRelationMeaning(primaryRel).trim():'';
+      const headline=`${stemMeaning} 그중에서도 이 사주의 핵심 강점은 ${social.identity}입니다. ${social.good}`;
+      const easyReason=`${gyeokWhy} ${strengthWay}${interpretationBridge?.easy?` ${interpretationBridge.easy}`:''}`;
+      const reality=`실제 생활에서는 ${social.example} ${strengthWay}${relationAdvice?` ${relationAdvice}`:''}`;
+      const caution=`${social.caution}${relationAdvice?` ${relationAdvice}`:''}${interpretationBridge?.life?` ${interpretationBridge.life}`:''}`;
+      const action=homeActionByTen[socialTen]||social.example;
       const reason=`일간 ${g}${ganKo[g]} 하나로 결론내리지 않고, 강약 ${strength.userLabel}, ${usefulText}, ${burdenText}, 격국 ${gyeokText}, 실제 관계 ${relationText}, 사회 십신 ${withJosa(social.label,'을/를')} 함께 묶어 판단했습니다.`;
-      const reality=`생활에서는 ${social.good} ${stemPlain} ${primaryRel?`다만 ${relationTypePlain(primaryRel.type,primaryRel.status)}에서는 기대와 역할을 실제로 어떻게 맞출지가 중요합니다.`:''}`;
-      const action=useful.length&&elementAction[useful[0]]?elementAction[useful[0]]:(strength.direction==='WEAK'?'지원·준비·회복을 확보한 뒤 중요한 역할부터 맡으세요.':strength.direction==='STRONG'?'이미 가진 힘을 결과와 책임으로 바꾸는 일부터 선택하세요.':social.good);
       const judgmentId=['NATAL',g,strength.status,strength.userLabel,useful.join(''),burden.join(''),gy?.stateCode||gy?.status||gy?.name||'GY_UNRESOLVED',socialTen,primaryRel?.id||'REL_NONE'].join('|');
-      const trace={judgmentId,dayStem:g,strength:{status:strength.status,label:strength.userLabel,direction:strength.direction,reason:strength.reason},useful,burden,gyeok:{name:gyeokText,status:gy?.status||'',stateCode:gy?.stateCode||null,ten:gy?.ten||null},socialTen,relation:primaryRel?{id:primaryRel.id,type:primaryRel.type,status:primaryRel.status,text:primaryRel.text}:null};
+      const meaningBridge={technical:`${gyeokText} · ${strength.userLabel} · ${social.label}${interpretationBridge?.technical?` · ${interpretationBridge.technical}`:''}`,easy:easyReason,life:`${reality} ${action}`,caution};
+      const trace={judgmentId,dayStem:g,strength:{status:strength.status,label:strength.userLabel,direction:strength.direction,reason:strength.reason},useful,burden,gyeok:{name:gyeokText,status:gy?.status||'',stateCode:gy?.stateCode||null,ten:gy?.ten||null},socialTen,relation:primaryRel?{id:primaryRel.id,type:primaryRel.type,status:primaryRel.status,text:primaryRel.text}:null,roleProvenance,interpretationBridge,meaningBridge};
       window.__SAJUGYEOL_JUDGMENT_TRACE__=trace;
-      return {judgmentId,headline,reason,reality,action,trace,socialTen};
+      return {judgmentId,headline,reason,easyReason,reality,caution,action,trace,socialTen,roleProvenance,interpretationBridge,meaningBridge};
     }
     function natalLifeSummary(){
       const s=structureState,g=natal.getDayGan(),e=elem[g],plain=elementPlain[e],stem=analyzeDayStemContext(),gy=analyzeGyeok(),judgment=buildNatalSynthesisState();
@@ -13231,8 +13337,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
     function renderBeginner(){
       const life=natalLifeSummary(),baseDate=new Date(selectedFortuneDate),fortuneBaseDate=sameCalendarDay(baseDate,new Date())?new Date():baseDate,bundle=fortuneLayers(fortuneBaseDate,'today'),yr=bundle.layers.find(x=>x.key==="세운"),mo=bundle.layers.find(x=>x.key==="월운"),day=bundle.layers.find(x=>x.key==="일운"),yrInfo=quickLayerInfo(yr,bundle),moInfo=quickLayerInfo(mo,bundle),dayInfo=quickLayerInfo(day,bundle),isToday=sameCalendarDay(baseDate,new Date()),dateLabel=`${baseDate.getMonth()+1}월 ${baseDate.getDate()}일`,dayPillar=`${natal.getDayGan()}${natal.getDayZhi()}`;
       const actualNow=getActualNowDate(),actualBeforeBirth=isBeforePersonalBirth(actualNow),actualBundle=actualBeforeBirth?null:fortuneLayers(actualNow,'today'),actualDy=actualBundle?.layers?.find(x=>x.key==="대운")||null,actualDyInfo=actualBundle?quickLayerInfo(actualDy,actualBundle):{label:'출생 전',text:'아직 출생 전이라 현재 시점의 개인 운세는 제공하지 않습니다.'},actualState=actualBeforeBirth?{kind:'prebirth',date:actualNow,currentIndex:null,possibleIndices:[],unknown:!!profile?.unknown}:getDayunCurrentState(actualNow),actualCopy=actualBeforeBirth?{short:'출생 전',title:'출생 전',gan:'—',sentence:'아직 출생 전이라 현재 시점의 개인 운세는 제공하지 않습니다.'}:dayunStateUserCopy(actualState),actualCurrent=actualState.kind==='current'&&actualState.currentIndex!=null?daYunItems[actualState.currentIndex]:null,futureDecade=daYunItems.find(x=>x.getStartYear()>actualNow.getFullYear()),currentDecade=actualBeforeBirth?'아직 출생 전':actualState.kind==='uncertain'?'전환 가능 구간':actualCurrent?`${actualCurrent.getGanZhi()} · ${actualCurrent.getStartAge()}~${actualCurrent.getEndAge()}세`:futureDecade?`첫 대운 · ${futureDecade.getStartAge()}세 무렵`:'전환 경계',brief=text=>{const m=String(text||'').match(/^.*?[.!?](?:\s|$)/);return (m?m[0]:String(text||'')).trim()},selectedScopeBrief=(text,range)=>{const out=brief(text);if(isToday&&!actualBeforeBirth)return out;return range==='year'?out.replace(/^올해는\s*/,'선택한 해에는 '):range==='month'?out.replace(/^이번 달에는\s*/,'선택한 절기월에는 '):out.replace(/^오늘은\s*/,'선택한 날짜에는 ')};
-      const actionTrace=life.judgment?.trace||{},actionTen=actionTrace.socialTen||life.socialTen||'비견',actionUser=tenUserCopy[actionTen]||tenUserCopy.비견,actionUseful=(actionTrace.useful||[])[0]||null,actionBase=tenDecisionAction[actionTen]||actionUser.good,actionElement=actionUseful&&elementAction[actionUseful]?elementAction[actionUseful]:'',actionRelation=actionTrace.relation?' 관계·역할 신호가 있는 자리에서는 기대와 책임을 다시 확인한 뒤 움직이세요.':'';
-      const actionLine=`${actionBase}${actionElement?` 보완 방향으로는 ${actionElement}`:''}${actionRelation}`.trim()||brief(life.strength);
+      const actionTrace=life.judgment?.trace||{},actionLine=life.judgment?.action||brief(life.strength),meaningReason=life.judgment?.easyReason||'',meaningCaution=life.judgment?.caution||'';
       const ps=[
         {label:'시주',v:profile.unknown?null:natal.getTime(),ten:profile.unknown?'시간 미상':cnTen(natal.getTimeShiShenGan())},
         {label:'일주',v:natal.getDay(),ten:'나 자신',day:true},
@@ -13263,7 +13368,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
         <section class="sg-core-card" data-judgment-id="${life.judgmentId}">
           <svg class="sg-core-brush" viewBox="0 0 340 120" preserveAspectRatio="none" aria-hidden="true"><path d="M-10 93c61-49 105-44 146-8 39-49 83-57 126-11 26-20 52-22 94 4"/></svg>
           <div class="sg-core-emblem" aria-hidden="true"><span>☯</span></div>
-          <div class="sg-core-copy"><small>지금 내 사주의 핵심</small><strong>${life.judgment?.headline||life.core}</strong><p>${actionLine}</p></div>
+          <div class="sg-core-copy"><small>지금 내 사주의 핵심</small><strong>${life.judgment?.headline||life.core}</strong><p>${meaningReason?`<b>왜 이렇게 보나</b> ${meaningReason}<br>`:''}<b>생활에서는</b> ${actionLine}${meaningCaution?`<br><b>조심할 점</b> ${meaningCaution}`:''}</p></div>
           <button class="sg-core-next" type="button" data-app-next="practicalConsultCard">인생풀이 보기 <span>›</span></button>
         </section>
         <section class="sg-fortune-strip">
@@ -13328,7 +13433,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
     }
     function renderYongshin(referenceDate=getActualNowDate()){
       const el=$('#yongshinCard');if(!el||!structureState?.yongshin)return;
-      const ys=structureState.yongshin,s=structureState;
+      const ys=structureState.yongshin,s=structureState,roleContract=buildYongshinRoleProvenanceContract(s),roleBridge=buildRoleConflictInterpretationBridge(roleContract);
       const methodOrder=['climate','suppress','disease','bridge','follow','gyeok'];
       const methodHtml=methodOrder.map(k=>{const m=ys.methods[k],rows=(m.candidates||[]).map(c=>`<div class="evidence-mini"><b>${elementName(c.element)} · 신뢰도 ${c.confidence}</b><br>${c.reason}<br><small>${c.availability?.evidence?.join(' · ')||'원국 사용성 확인 필요'}</small></div>`).join('');return `<div class="rule-line"><b>${m.label}</b> <span class="advanced-label">${m.status}</span><br>${m.note}${rows?`<div style="margin-top:8px">${rows}</div>`:''}</div>`}).join('');
       const core=ys.coreCandidates.length?ys.coreCandidates.map(x=>`${elementName(x.element)} <small>(${(x.selectionRoles||x.roles||[]).join(' · ')||x.methods.join('+')})</small>`).join('<br>'):'확정하지 않음';
@@ -13344,7 +13449,19 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       const useElements=[...new Set([...ys.coreCandidates.map(x=>x.element),...ys.xiCandidates.map(x=>x.element),...ys.auxiliary.slice(0,3).map(x=>x.element)])];
       const periodRows=useElements.length?useElements.map(e=>{const natalUse=assessElementUsability(e),period=assessYongshinPeriodUsability(e,referenceDate);return `<div class="rule-line"><b>${elementName(e)} · ${period.label}</b><br><small>원국:</small> ${natalUse.label}<br>${natalUse.evidence.join(' · ')}<br><small>대운·세운:</small> ${period.detail}${period.evidence.length?`<br>${period.evidence.join(' · ')}`:''}</div>`}).join(''):'<div class="rule-line">핵심·희신 후보가 아직 좁혀지지 않아 대운·세운 사용성은 후보 확정 뒤 비교합니다.</div>';
       const dateLabel=`${referenceDate.getFullYear()}년 ${referenceDate.getMonth()+1}월 ${referenceDate.getDate()}일 기준`;
-      el.innerHTML=`<h3>用神 · 喜神 · 용신·희신 판정 <span class="confidence">${ys.status} · 신뢰도 ${ys.confidence}</span></h3><p class="subcopy">조후·억부·병약·통관·격국을 서로 다른 관법으로 유지합니다. <b>몇 관법이 같은 오행을 찍었는지로 투표하지 않고</b>, 각 관법의 성립조건과 역할을 먼저 확인한 뒤 교차 확인·충돌·원국 사용성을 검토합니다.</p><div class="summary-hero"><b>현재 종합</b><strong>${ys.status}: ${ys.coreLabel}</strong><span>${ys.confidenceReason}</span></div><div class="depth-note"><b>이번 판정이 이렇게 나온 이유</b><br>${basis}</div><h3 class="life-title">① 다섯 관법을 따로 판정</h3><div class="rule-grid">${methodHtml}</div><h3 class="life-title">② 성립조건과 역할에 따라 종합</h3><div class="overview-grid"><div class="overview-item"><b>핵심 용신 후보</b><span>${core}</span></div><div class="overview-item"><b>희신 후보</b><span>${xi}</span></div><div class="overview-item"><b>格局用神 · 월령 구조의 주체</b><span>${gyeokCoreText}</span></div><div class="overview-item"><b>相神 · 喜神과 구분</b><span>${gyeokSupport}</span></div><div class="overview-item"><b>보조적으로 유리한 기운</b><span>${aux}</span></div><div class="overview-item"><b>과해질 때 부담이 되는 기운</b><span>${burden}</span></div><div class="overview-item" style="grid-column:1/-1"><b>교차 확인 · 투표 아님</b><span>${agreements}</span></div><div class="overview-item" style="grid-column:1/-1"><b>충돌·제한</b><span>${conflicts}</span></div></div>${xiDeferred}<div class="depth-note"><b>희신 표시 원칙</b><br>희신을 ‘용신을 생하는 오행’ 하나의 공식으로 정의하지 않습니다. 원전 사례에서는 희신이 용신을 생조·보좌하는 방식으로 쓰이지만 구조에 따라 쓰임이 달라질 수 있으므로, 자동 판정에서는 근거가 가장 분명한 <b>생조형 희신 후보</b>만 표시합니다. 격국을 성립·보호·구응하는 相神은 희신과 합치지 않고 바로 위에 별도로 표시합니다.</div><h3 class="life-title">③ 원국 존재·투출·통근·생조·관계 제한</h3><p class="subcopy">원국에 없다고 자동으로 용신에서 탈락시키지 않고, 있더라도 합·충·형·파·해·육합 등으로 기능이 묶이는지 따로 봅니다.</p><div class="rule-grid">${useElements.length?useElements.map(e=>{const a=assessElementUsability(e);return `<div class="rule-line"><b>${elementName(e)} · ${a.label}</b><br>${a.detail}<br><small>${a.evidence.join(' · ')}</small></div>`}).join(''):'<div class="rule-line">판정 보류 상태입니다. 원국 사용성은 후보가 좁혀지면 함께 표시합니다.</div>'}</div><h3 class="life-title">④ 대운·세운에서 실제 쓸 수 있는가 <span class="advanced-label">${dateLabel}</span></h3><div class="rule-grid">${periodRows}</div><details><summary>판정 원칙과 경계</summary><p>① 조후는 한난조습의 과도한 불균형이 실제로 남을 때 우선도를 높이며, 단순 계절명만으로 강제하지 않습니다. ② 病藥이 성립하여 필요한 기능을 실제 병이 막고 있다면 병을 다스리는 藥을 교정 후보로 먼저 검토합니다. ③ 通關은 비등한 상극 대립과 중간 경로 부족이 함께 성립할 때만 작동합니다. ④ 억부는 기본적인 균형 관법이지만 복수 후보를 한 가지로 임의 선택하지 않습니다. ⑤ 《자평진전》의 格局用神은 월령 격국의 주체로 별도 추적하고, 相神은 격을 성립·보호·구응하는 보완 기능으로 구분합니다. 억부와 합산하거나 다수결하지 않습니다. ⑥ 서로 다른 관법의 일치는 후보를 교차 확인하는 자료일 뿐 다수결이 아닙니다. 낮은 신뢰도 관법 여러 개가 모였다는 이유로 전체 신뢰도를 ‘높음’으로 올리지 않습니다.</p><p><b>신뢰도</b>는 이 앱 안에서 성립조건을 통과한 독립 근거가 얼마나 일관되고 사용성 제한이 얼마나 적은지를 나타내는 내부 판정 신뢰도입니다. 실제 미래 사건의 과학적 예측 정확도를 뜻하지 않습니다.</p></details>`;
+      const roleMethodLabel={climate:'조후',suppress:'억부',disease:'병약',bridge:'통관',follow:'전왕·종격',gyeok:'격국 상신',gyeokYongshin:'격국용신',suppressBurden:'억부'};
+      const roleMeaning={climate:'한난조습을 조절하는 데 필요',suppress:'강약 균형을 맞추는 데 필요',disease:'막힌 기능을 풀기 위한 藥 역할',bridge:'맞서는 기운 사이를 잇는 역할',follow:'전왕·종격 구조가 따르는 방향',gyeok:'격을 성립·보호·구응하는 상신 역할',gyeokYongshin:'월령 격국의 주체',suppressBurden:'과해질 때 부담'};
+      const roleFocus=roleContract.elements.filter(x=>x.overlap||x.finalUseful);
+      const roleRows=roleFocus.length?roleFocus:roleContract.elements.filter(x=>x.roles.some(r=>['gyeokYongshin','disease','climate'].includes(r.method))).slice(0,2);
+      const roleMatrix=roleRows.map(x=>{
+        const finalState=x.overlap?'필요 + 과다 시 부담':x.finalUseful?'필요 역할':x.burden?'과다 시 부담':'구조 역할';
+        const finalRule=x.overlap?'필요한 기능은 쓰되, 과하게 늘리는 방향은 피합니다.':x.finalUseful?'필요한 역할을 실제로 쓸 수 있는 조건을 우선합니다.':x.burden?'더 늘리기보다 과다해지는 조건을 먼저 경계합니다.':'격국·구조상의 역할로 분리해 참고합니다.';
+        const rows=x.roles.map(r=>`<div class="evidence-mini"><b>${roleMethodLabel[r.method]||r.methodLabel}</b> → ${roleMeaning[r.method]||r.role}</div>`).join('');
+        return `<div class="rule-line"><b>${elementName(x.element)} · ${finalState}</b>${rows}<div class="evidence-mini"><b>최종 적용</b> → ${finalRule}</div></div>`;
+      }).join('');
+      const overlapText=roleContract.overlaps.length?roleContract.overlaps.map(e=>`${elementName(e)}: 필요한 역할과 과다 시 부담 역할을 동시에 보존`).join('<br>'):'최종 useful/burden이 겹치는 오행은 없습니다.';
+      const conflictBridge=roleBridge?`<div class="structure-note"><b>왜 모순이 아닌가</b><br>${roleBridge.technical}<br><br><b>쉽게 풀면</b><br>${roleBridge.easy}<br><br><b>최종 사용 원칙</b><br>${roleBridge.life}</div>`:'';
+      el.innerHTML=`<h3>用神 · 喜神 · 용신·희신 판정 <span class="confidence">${ys.status} · 신뢰도 ${ys.confidence}</span></h3><p class="subcopy">조후·억부·병약·통관·격국을 서로 다른 관법으로 유지합니다. <b>몇 관법이 같은 오행을 찍었는지로 투표하지 않고</b>, 각 관법의 성립조건과 역할을 먼저 확인한 뒤 교차 확인·충돌·원국 사용성을 검토합니다.</p><div class="summary-hero"><b>현재 종합</b><strong>${ys.status}: ${ys.coreLabel}</strong><span>${ys.confidenceReason}</span></div><div class="structure-note"><b>관법별 역할 충돌 요약</b><br>${overlapText}</div>${conflictBridge}<h3 class="life-title">관법별 역할 정리</h3><div class="rule-grid">${roleMatrix||'<div class="rule-line">현재 핵심 역할을 한 오행으로 좁히지 않았습니다.</div>'}</div><div class="depth-note"><b>이번 판정이 이렇게 나온 이유</b><br>${basis}</div><h3 class="life-title">① 다섯 관법을 따로 판정</h3><div class="rule-grid">${methodHtml}</div><h3 class="life-title">② 성립조건과 역할에 따라 종합</h3><div class="overview-grid"><div class="overview-item"><b>핵심 용신 후보</b><span>${core}</span></div><div class="overview-item"><b>희신 후보</b><span>${xi}</span></div><div class="overview-item"><b>格局用神 · 월령 구조의 주체</b><span>${gyeokCoreText}</span></div><div class="overview-item"><b>相神 · 喜神과 구분</b><span>${gyeokSupport}</span></div><div class="overview-item"><b>보조적으로 유리한 기운</b><span>${aux}</span></div><div class="overview-item"><b>과해질 때 부담이 되는 기운</b><span>${burden}</span></div><div class="overview-item" style="grid-column:1/-1"><b>교차 확인 · 투표 아님</b><span>${agreements}</span></div><div class="overview-item" style="grid-column:1/-1"><b>충돌·제한</b><span>${conflicts}</span></div></div>${xiDeferred}<div class="depth-note"><b>희신 표시 원칙</b><br>희신을 ‘용신을 생하는 오행’ 하나의 공식으로 정의하지 않습니다. 원전 사례에서는 희신이 용신을 생조·보좌하는 방식으로 쓰이지만 구조에 따라 쓰임이 달라질 수 있으므로, 자동 판정에서는 근거가 가장 분명한 <b>생조형 희신 후보</b>만 표시합니다. 격국을 성립·보호·구응하는 相神은 희신과 합치지 않고 바로 위에 별도로 표시합니다.</div><h3 class="life-title">③ 원국 존재·투출·통근·생조·관계 제한</h3><p class="subcopy">원국에 없다고 자동으로 용신에서 탈락시키지 않고, 있더라도 합·충·형·파·해·육합 등으로 기능이 묶이는지 따로 봅니다.</p><div class="rule-grid">${useElements.length?useElements.map(e=>{const a=assessElementUsability(e);return `<div class="rule-line"><b>${elementName(e)} · ${a.label}</b><br>${a.detail}<br><small>${a.evidence.join(' · ')}</small></div>`}).join(''):'<div class="rule-line">판정 보류 상태입니다. 원국 사용성은 후보가 좁혀지면 함께 표시합니다.</div>'}</div><h3 class="life-title">④ 대운·세운에서 실제 쓸 수 있는가 <span class="advanced-label">${dateLabel}</span></h3><div class="rule-grid">${periodRows}</div><details><summary>판정 원칙과 경계</summary><p>① 조후는 한난조습의 과도한 불균형이 실제로 남을 때 우선도를 높이며, 단순 계절명만으로 강제하지 않습니다. ② 病藥이 성립하여 필요한 기능을 실제 병이 막고 있다면 병을 다스리는 藥을 교정 후보로 먼저 검토합니다. ③ 通關은 비등한 상극 대립과 중간 경로 부족이 함께 성립할 때만 작동합니다. ④ 억부는 기본적인 균형 관법이지만 복수 후보를 한 가지로 임의 선택하지 않습니다. ⑤ 《자평진전》의 格局用神은 월령 격국의 주체로 별도 추적하고, 相神은 격을 성립·보호·구응하는 보완 기능으로 구분합니다. 억부와 합산하거나 다수결하지 않습니다. ⑥ 서로 다른 관법의 일치는 후보를 교차 확인하는 자료일 뿐 다수결이 아닙니다. 낮은 신뢰도 관법 여러 개가 모였다는 이유로 전체 신뢰도를 ‘높음’으로 올리지 않습니다.</p><p><b>신뢰도</b>는 이 앱 안에서 성립조건을 통과한 독립 근거가 얼마나 일관되고 사용성 제한이 얼마나 적은지를 나타내는 내부 판정 신뢰도입니다. 실제 미래 사건의 과학적 예측 정확도를 뜻하지 않습니다.</p></details>`;
     }
 
 
@@ -14239,6 +14356,33 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       if(join)return '사람이나 일이 자연스럽게 이어질 수 있으니 역할과 약속을 분명히 해 두세요.';
       return '';
     }
+    function fortuneLayerForRange(bundle,range){const key={year:'세운',month:'월운',today:'일운'}[range];return (bundle.layers||[]).find(x=>x.key===key)||bundle.layers?.[bundle.layers.length-1]||null}
+    function fortuneParentLayer(bundle,range){const key={year:'대운',month:'세운',today:'월운'}[range];return (bundle.layers||[]).find(x=>x.key===key)||null}
+    function fortuneLayerDecision(layer){return decisivePeriodBalance(layer?.balance||{kind:'neutral',needed:[],burdens:[]})}
+    function fortuneLayerRelations(layer,bundle){if(!layer)return [];return [...(layer.relations||[]),...(bundle.links||[]).filter(x=>x.includes(layer.key))]}
+    function fortuneBalancePlain(kind){return {support:'준비한 일을 실제로 쓰기 쉬운 쪽',burden:'일을 늘리기보다 정리와 점검이 필요한 쪽',mixed:'도움과 부담이 함께 있어 선택을 좁혀야 하는 쪽',neutral:'한쪽으로 크게 치우치지 않아 평소 기준을 유지하는 쪽'}[kind]||'평소 기준을 유지하는 쪽'}
+    function fortuneStripScope(text,range){return String(text||'').replace(range==='year'?/^올해는\s*/:range==='month'?/^이번 달은\s*/:/^오늘은\s*/,'')}
+    function fortuneConcretePeriodAction(ten,range){const u=tenUserCopy[ten]||tenUserCopy.비견;return fortuneStripScope(u[range]||u.today||u.good,range)}
+    function fortuneActionSentence(ten,range){const raw=fortuneConcretePeriodAction(ten,range),parts=(raw.match(/[^.!?]+[.!?]?/g)||[]).map(x=>x.trim()).filter(Boolean);return parts.length>1?parts[parts.length-1]:raw}
+    function fortuneLayerDifference(range,bundle){
+      const current=fortuneLayerForRange(bundle,range),parent=fortuneParentLayer(bundle,range),curTen=current?.ten||'비견',parTen=parent?.ten||null,curU=tenUserCopy[curTen]||tenUserCopy.비견,parU=parTen?(tenUserCopy[parTen]||tenUserCopy.비견):null,curD=fortuneLayerDecision(current),parD=parent?fortuneLayerDecision(parent):null,curR=fortuneLayerRelations(current,bundle),rel=fortuneRelationAdvice(curR),sameTen=!!parent&&curTen===parTen,sameKind=!!parD&&curD.kind===parD.kind;
+      if(range==='year'){
+        const headline=`올해는 ${fortuneConcretePeriodAction(curTen,'year')}`;
+        const reason=`${parent?`현재 대운에서는 ${parU.identity}이 오래 이어지는 배경입니다. `:''}세운 ${current?.ganji||''}에서는 ${curU.label}이 올해의 핵심 과제로 더해지고, 전체 균형은 ${fortuneBalancePlain(curD.kind)}으로 읽힙니다.${rel?` ${rel}`:''}`;
+        const use=`올해는 ${fortuneActionSentence(curTen,'year')}`;
+        return {current,parent,currentTen:curTen,parentTen:parTen,sameTen,sameKind,headline,reason,use,caution:`${curU.caution}${rel?` ${rel}`:''}`,remember:`올해는 ${curU.label}을 중심으로 보고, 대운은 그 선택이 오래 이어지는 배경으로 봅니다.`,continuity:'현재 10년의 큰 배경 위에 세운만 더해 올해의 우선순위를 정합니다.'};
+      }
+      if(range==='month'){
+        const headBase=sameTen?`이번 달은 올해와 기본 주제가 비슷합니다. ${fortuneConcretePeriodAction(curTen,'month')}`:`올해는 ${withJosa(parU?.label||'기존 주제','이/가')} 중심이지만, 이번 달에는 ${withJosa(curU.label,'이/가')} 더해집니다. ${fortuneConcretePeriodAction(curTen,'month')}`;
+        const delta=!parent?`월운 ${current?.ganji||''} 자체를 중심으로 봅니다.`:sameKind?`균형 방향도 올해와 비슷하게 ${fortuneBalancePlain(curD.kind)}입니다.`:`올해의 ${fortuneBalancePlain(parD.kind)}에서 이번 달은 ${fortuneBalancePlain(curD.kind)}으로 달라집니다.`;
+        const reason=`${sameTen?'세운과 월운의 십신 주제가 같아 큰 방향은 이어집니다. ':''}월운 ${current?.ganji||''}이 한 달 단위의 조건을 추가합니다. ${delta}${rel?` ${rel}`:''}`;
+        return {current,parent,currentTen:curTen,parentTen:parTen,sameTen,sameKind,headline:headBase,reason,use:`이번 달에는 ${fortuneActionSentence(curTen,'month')}`,caution:`${curU.caution}${rel?` ${rel}`:''}`,remember:sameTen?'올해와 같은 주제를 억지로 다르게 만들지 않습니다. 이번 달에는 월운이 더한 균형과 관계 조건만 좁혀서 봅니다.':`올해의 큰 주제는 유지하되, 이번 달에는 ${curU.label}을 더 가까운 행동 기준으로 봅니다.`,continuity:'대운 → 세운까지 만든 올해 흐름 위에 월운만 추가해 이번 절기월의 차이를 봅니다.'};
+      }
+      const headBase=sameTen?`이번 달과 기본 주제가 비슷합니다. ${fortuneConcretePeriodAction(curTen,'today')}`:`이번 달의 ${parU?.label||'기존 주제'} 위에 오늘은 ${withJosa(curU.label,'이/가')} 더해집니다. ${fortuneConcretePeriodAction(curTen,'today')}`;
+      const delta=!parent?`일운 ${current?.ganji||''} 자체를 중심으로 봅니다.`:sameKind?`균형 방향도 이번 달과 비슷하게 ${fortuneBalancePlain(curD.kind)}입니다.`:`이번 달의 ${fortuneBalancePlain(parD.kind)}에서 오늘은 ${fortuneBalancePlain(curD.kind)}으로 달라집니다.`;
+      const reason=`${sameTen?'월운과 일운의 십신 주제가 같아 기본 방향은 이어집니다. ':''}일운 ${current?.ganji||''}이 오늘 하루의 마지막 조건을 추가합니다. ${delta}${rel?` ${rel}`:''}`;
+      return {current,parent,currentTen:curTen,parentTen:parTen,sameTen,sameKind,headline:headBase,reason,use:`오늘은 ${fortuneActionSentence(curTen,'today')}`,caution:`${curU.caution}${rel?` ${rel}`:''}`,remember:sameTen?'이번 달과 같은 주제를 억지로 바꾸지 않고, 오늘 일운이 더한 차이만 봅니다.':`이번 달의 큰 흐름은 유지하되, 오늘은 ${curU.label}이 마지막 행동 기준이 됩니다.`,continuity:'대운 → 세운 → 월운까지 만든 배경 위에 일운만 추가해 오늘의 마지막 차이를 봅니다.'};
+    }
     function fortunePublicReason(kind,user,allRelations){
       const rel=fortuneRelationAdvice(allRelations);
       if(kind==='support')return `${user.good} 이 장점을 쓰기 좋은 조건이 보태졌습니다.${rel?` ${rel}`:''}`;
@@ -14254,34 +14398,30 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       return `${withJosa(scope,'은/는')} 큰 방향을 바꾸기보다 ${action}${rel?` ${rel}`:''}`;
     }
     function buildFortuneSynthesisState(range,bundle,t){
-      const ten=mainTen(bundle),user=tenUserCopy[ten]||tenUserCopy.비견,ctx=targetPeriodContext(range,bundle,t),scope={today:'오늘',month:'이번 달',year:'올해'}[range]||'이 시기',allRelations=ctx.relations||[],kind=ctx.balance?.kind||'neutral';
+      const hierarchy=fortuneLayerDifference(range,bundle),ten=hierarchy.currentTen,user=tenUserCopy[ten]||tenUserCopy.비견,ctx=targetPeriodContext(range,bundle,t),allRelations=ctx.relations||[],kind=ctx.balance?.kind||'neutral';
       const needed=[...new Set(ctx.balance?.needed||[])],burdens=[...new Set(ctx.balance?.burdens||[])],natalUseful=[...new Set(structureState?.finalUsefulElements||[])],natalBurden=[...new Set(confirmedBurdenElements(structureState))];
       const hasClash=allRelations.some(x=>/충|형|파|해|원진/.test(x)),hasJoin=allRelations.some(x=>x.includes('합'));
-      const burdenText=burdens.length?burdens.map(elementName).join(' · '):'원국의 부담 기능';
-      const headline=fortunePublicHeadline(kind,scope,ten,user,allRelations);
       const layerTrace=(bundle.layers||[]).map(layer=>{const d=decisivePeriodBalance(layer.balance||periodBalance({gan:layer.gan,zhi:layer.zhi}));return {key:layer.key,ganji:layer.ganji,ten:layer.ten,rawKind:layer.balance?.kind||'neutral',kind:d.kind,needed:[...(d.needed||[])],burdens:[...(d.burdens||[])]}});
       const reason=`원국 필요 ${natalUseful.length?natalUseful.map(elementName).join(' · '):'확정 후보 없음'} / 부담 ${natalBurden.length?natalBurden.map(elementName).join(' · '):'확정 후보 없음'} 위에 ${layerTrace.map(x=>`${x.key} ${x.ganji} ${periodStateUserLabel(x.kind)}`).join(' → ')} 순서로 겹쳐 본 결과입니다. ${relationSentence(allRelations)}`;
-      const publicReason=fortunePublicReason(kind,user,allRelations);
-      const topicAction=tenDecisionAction[ten]||user.good,needAction=needed.length&&elementAction[needed[0]]?elementAction[needed[0]]:'',relationAction=hasClash||hasJoin?fortuneRelationAdvice(allRelations):'';
-      const practical=`${topicAction}${needAction?` ${needAction}`:''}${relationAction?` ${relationAction}`:''}`;
-      const caution=burdens.length?`${user.caution}`:hasClash?`${user.caution} ${fortuneRelationAdvice(allRelations)}`:user.caution;
+      const natalRoleProvenance=buildYongshinRoleProvenanceContract(structureState),periodRoleProvenance=buildFortuneRoleProvenanceContract(natalRoleProvenance,needed,burdens,layerTrace),roleBridge=buildFortuneRoleConflictBridge(periodRoleProvenance);
+      const publicReason=`${hierarchy.reason}${roleBridge?.easy?` ${roleBridge.easy}`:''}`;
       const traceId=['FORTUNE',isoDate(new Date(selectedFortuneDate)),range,kind,ten,needed.join(''),burdens.join(''),layerTrace.map(x=>`${x.key}:${x.kind}`).join('>'),hasClash?'CLASH':hasJoin?'JOIN':'REL_NONE'].join('|');
-      return {traceId,topicTen:ten,topicLabel:user.label,ctx,kind,needed,burdens,natalUseful,natalBurden,allRelations,layerTrace,headline,reason,publicReason,practical,caution,safety:'큰돈·계약·건강·관계의 중요한 결정은 운세 문장만으로 확정하지 말고 실제 조건과 전문 정보를 함께 확인하세요.'};
+      return {traceId,topicTen:ten,topicLabel:user.label,ctx,kind,needed,burdens,natalUseful,natalBurden,allRelations,layerTrace,natalRoleProvenance,periodRoleProvenance,roleBridge,hierarchy,headline:hierarchy.headline,reason,publicReason,practical:hierarchy.use,caution:hierarchy.caution,safety:'큰돈·계약·건강·관계의 중요한 결정은 운세 문장만으로 확정하지 말고 실제 조건과 전문 정보를 함께 확인하세요.'};
     }
     function periodNarrative(range,bundle,t){
-      const synth=buildFortuneSynthesisState(range,bundle,t),ten=synth.topicTen,secondTen=secondaryTen(bundle),copy=tenText[ten]||tenText.비견,user=tenUserCopy[ten]||tenUserCopy.비견,secondUser=secondTen?(tenUserCopy[secondTen]||tenUserCopy.비견):null,ctx=synth.ctx,allRelations=synth.allRelations,theme=ctx.theme,secondText=secondUser?` 함께 살필 부분은 ${secondUser.identity}입니다.`:'';
+      const synth=buildFortuneSynthesisState(range,bundle,t),ten=synth.topicTen,copy=tenText[ten]||tenText.비견,user=tenUserCopy[ten]||tenUserCopy.비견,ctx=synth.ctx,allRelations=synth.allRelations,theme=ctx.theme,h=synth.hierarchy;
       const headline=synth.headline,gyeokLuck=range==='year'?evaluateGyeokLuck(new Date(selectedFortuneDate)):null,gyeokFlowEasy=gyeokLuck?.summary||'';
-      const core=`${synth.publicReason}${secondText}`;
+      const core=synth.publicReason;
       const work=`${copy.domains[0]}. ${tenWorkAction[ten]}`;
       const money=`${copy.domains[1]}. ${tenMoneyAction[ten]} 큰돈이 걸린 결정이라면 수익 기대보다 손실 한도·현금 흐름·계약 조건을 먼저 확인하세요.`;
       const people=`${copy.domains[2]}. ${tenPeopleAction[ten]}`;
-      const meeting=allRelations.some(x=>/충|형|파|해|원진/.test(x))?'회의·약속은 시간·장소·담당을 재확인하고, 의견 차이가 생기면 즉석에서 승부를 내기보다 수정안을 남기세요.':allRelations.some(x=>x.includes('합'))?'협의와 공동 작업을 연결해 볼 수 있으나, 역할과 책임 범위를 먼저 적어 두세요.':`${tenPeopleAction[ten]} 중요한 대화는 핵심 요구를 한 문장으로 먼저 정리하세요.`;
-      const choice=tenDecisionAction[ten],use=synth.practical,caution=synth.caution,remember=synth.publicReason;
-      const continuity=range==='month'?`현재 10년과 올해의 흐름 위에서 이번 절기월의 실제 행동 기준을 좁혀 봅니다.`:range==='year'?`현재 10년의 큰 배경 위에서 올해 무엇을 살리고 무엇을 줄일지 봅니다.`:`대운 → 세운 → 월운 → 일운 순서의 기존 계산을 유지한 채 오늘의 마지막 촉발을 봅니다.`;
+      const meeting=fortuneRelationAdvice(fortuneLayerRelations(h.current,bundle))||`${tenPeopleAction[ten]} 중요한 대화는 핵심 요구를 한 문장으로 먼저 정리하세요.`;
+      const choice=tenDecisionAction[ten],use=h.use,caution=h.caution,remember=h.remember;
+      const continuity=h.continuity;
       const family=`가족·가까운 관계에서는 ${tenPeopleAction[ten]} 특히 감정과 사실을 구분해 말하면 불필요한 확대를 줄일 수 있습니다.`;
       const growth=`${copy.domains[3]}. ${['정인','편인','식신'].includes(ten)?'배운 것을 기록·실험·결과물로 남기는 과정이 중요합니다.':'현재 맡은 역할에서 필요한 기술과 기준을 한 가지씩 보완하세요.'}`;
       const change=`${copy.domains[4]}. ${tenDecisionAction[ten]}`;
-      return {ten,second:secondUser?secondUser.label:null,secondTen,headline,core,work,money,people,meeting,choice,use,caution,remember,continuity,family,growth,change,theme,allRelations,gyeokLuck,gyeokFlowEasy,synthesis:synth,traceId:synth.traceId,safety:synth.safety};
+      return {ten,second:h.parentTen?(tenUserCopy[h.parentTen]||tenUserCopy.비견).label:null,secondTen:h.parentTen,headline,core,work,money,people,meeting,choice,use,caution,remember,continuity,family,growth,change,theme,allRelations,gyeokLuck,gyeokFlowEasy,synthesis:synth,traceId:synth.traceId,safety:synth.safety};
     }
         function periodCards(items){return `<div class="life-grid">${items.map(([label,text,wide])=>`<div class="life-item ${wide?'wide':''}"><b>${label}</b><span>${text}</span></div>`).join('')}</div>`}
     function monthCandidateReason(decision,clash,join){
@@ -14762,7 +14902,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       if(range==='today'&&!fortuneIsActualDay(d)){
         s=s.replace(/오늘 줄일/g,'이 날짜에 줄일').replace(/오늘 살릴/g,'이 날짜에 살릴').replace(/오늘 행동과/g,'선택한 날짜의 행동과').replace(/오늘 추가 판단/g,'선택한 날짜의 추가 판단').replace(/오늘 추천 조합/g,'선택한 날짜의 추천 조합').replace(/오늘 과하게/g,'선택한 날짜에 과하게').replace(/오늘 일운에서/g,'선택한 날짜의 일운에서').replace(/오늘 흐름에/g,'선택한 날짜의 흐름에').replace(/오늘 전용 색/g,'선택한 날짜만의 색').replace(/오늘에는/g,'이 날짜에는').replace(/오늘은/g,'이 날짜에는').replace(/오늘의/g,'선택한 날짜의').replace(/오늘/g,'선택한 날짜').replace(/현재 10년/g,'이 날짜가 속한 10년').replace(/현재 역할/g,'그 시점의 역할').replace(/현재 방식/g,'그 시점의 방식').replace(/현재 흐름/g,'그 시점의 흐름').replace(/지금 무엇을/g,'이 날짜에 무엇을').replace(/지금은/g,'이 날짜에는').replace(/현재는/g,'이 날짜에는').replace(/지금/g,'이 날짜에').replace(/이번 절기월/g,'이 날짜가 속한 절기월').replace(/이번 달/g,'이 날짜가 속한 절기월').replace(/올해/g,`${fortuneYearStart(d)}년`);
       }else if(range==='month'&&!fortuneIsActualJieMonth(d)){
-        s=s.replace(/이번 달에는/g,'이 절기월에는').replace(/이번 달은/g,'이 절기월은').replace(/이번 달의/g,'이 절기월의').replace(/이번 달/g,'이 절기월').replace(/현재 10년/g,'이 시기가 속한 10년').replace(/현재 역할/g,'그 시점의 역할').replace(/현재 방식/g,'그 시점의 방식').replace(/현재 흐름/g,'그 시점의 흐름').replace(/지금은/g,'이 시기에는').replace(/지금/g,'이 시기').replace(/올해/g,`${fortuneYearStart(d)}년`);
+        const fy=fortuneYearStart(d);s=s.replace(/이번 달에는/g,'이 절기월에는').replace(/이번 달은/g,'이 절기월은').replace(/이번 달의/g,'이 절기월의').replace(/이번 달/g,'이 절기월').replace(/현재 10년/g,'이 시기가 속한 10년').replace(/현재 역할/g,'그 시점의 역할').replace(/현재 방식/g,'그 시점의 방식').replace(/현재 흐름/g,'그 시점의 흐름').replace(/지금은/g,'이 시기에는').replace(/지금/g,'이 시기').replace(/올해에는/g,`${fy}년에는`).replace(/올해는/g,`${fy}년은`).replace(/올해와/g,`${fy}년과`).replace(/올해의/g,`${fy}년의`).replace(/올해/g,`${fy}년`);
       }else if(range==='year'&&!fortuneIsActualYear(d)){
         const y=fortuneYearStart(d);s=s.replace(/올해에는/g,`${y}년에는`).replace(/올해는/g,`${y}년은`).replace(/올해의/g,`${y}년의`).replace(/올해/g,`${y}년`).replace(/현재 10년/g,'이 해가 속한 10년').replace(/현재 역할/g,'그 해의 역할').replace(/현재 방식/g,'그 해의 방식').replace(/현재 흐름/g,'그 해의 흐름').replace(/지금은/g,'그 해에는').replace(/현재는/g,'그 해에는').replace(/지금/g,'그 해에');
       }
@@ -14898,7 +15038,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       if(range==='year'){const fy=fortuneYearStart(date),items=monthsForFortuneYear(fy);return `<details class="fortune-more-details fortune-year-months"><summary>${fy}년 12절기월 흐름 보기</summary><div class="fortune-more-body"><div class="fortune-month-scroll">${items.map((m,i)=>{const rangeText=fortuneSolarRangeText(m.start,m.end,{referenceYear:fy,withTime:true});if(m.supported===false)return `<div class="month-chip"><b>${m.name}월 · ${m.gz}</b><span>${rangeText} 전</span><p><b>상태</b> ${m.unsupportedKind==='prebirth'?'출생 전 · ':''}${m.unsupportedReason}</p></div>`;const copy=tenText[m.ten]||tenText.비견,prev=i?items[i-1]:null,same=prev&&prev.supported!==false&&prev.ten===m.ten&&prev.theme.short===m.theme.short,role=same?'전월의 핵심 작용이 이어지는 구간':`${m.ten}의 ‘${tenEssence[m.ten]}’이 전면에 나오는 구간`;return `<div class="month-chip"><b>${m.name}월 · ${m.gz}</b><span>${rangeText} 전</span><p><b>역할</b> ${fortunePublicCopy(role)}</p><p><b>상태</b> ${fortunePublicCopy(m.theme.label)}</p><p><b>행동</b> ${fortunePublicCopy(tenWorkAction[m.ten])}</p></div>`}).join('')}</div></div></details>`;}
       return ''
     }
-    function fortuneTrace(range,date,bundle,narr,ctx,domains){const s=narr.synthesis||{};window.__SAJUGYEOL_FORTUNE_TRACE__={traceId:narr.traceId||s.traceId||'',range,date:isoDate(date),actualToday:fortuneIsActualDay(date),dayunState:ctx.state?.kind||'none',dayunCandidates:(ctx.candidates||[]).map(c=>c.dy.getGanZhi()),natal:{useful:s.natalUseful||[],burden:s.natalBurden||[]},target:{kind:s.kind||null,needed:s.needed||[],burdens:s.burdens||[],relations:s.allRelations||[]},layers:s.layerTrace||(bundle.layers||[]).map(x=>({key:x.key,ganji:x.ganji,ten:x.ten,rawKind:x.balance?.kind,kind:decisivePeriodBalance(x.balance)?.kind})),topicTen:s.topicTen||narr.ten,headline:narr.headline,reason:s.reason||narr.core,action:s.practical||narr.use,safety:narr.safety||'',domains:domains.map(x=>({label:x.label,state:x.state,action:x.action||x.text}))}}
+    function fortuneTrace(range,date,bundle,narr,ctx,domains){const s=narr.synthesis||{};window.__SAJUGYEOL_FORTUNE_TRACE__={traceId:narr.traceId||s.traceId||'',range,date:isoDate(date),actualToday:fortuneIsActualDay(date),dayunState:ctx.state?.kind||'none',dayunCandidates:(ctx.candidates||[]).map(c=>c.dy.getGanZhi()),natal:{useful:s.natalUseful||[],burden:s.natalBurden||[],roleProvenance:s.natalRoleProvenance||null},target:{kind:s.kind||null,needed:s.needed||[],burdens:s.burdens||[],relations:s.allRelations||[],roleProvenance:s.periodRoleProvenance||null,roleBridge:s.roleBridge||null},layers:s.layerTrace||(bundle.layers||[]).map(x=>({key:x.key,ganji:x.ganji,ten:x.ten,rawKind:x.balance?.kind,kind:decisivePeriodBalance(x.balance)?.kind})),topicTen:s.topicTen||narr.ten,headline:narr.headline,reason:s.reason||narr.core,action:s.practical||narr.use,safety:narr.safety||'',domains:domains.map(x=>({label:x.label,state:x.state,action:x.action||x.text}))}}
 
     var fortuneViewMode='summary';
     function fortuneColorHex(name){for(const g of Object.values(lifeGuide||{})){for(const p of (g.palette||[])){if(p[0]===name)return p[1]}}return '#8b7768'}
@@ -14960,7 +15100,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
       const calendarBasis=currentRange==='month'?(()=>{const mi=t.monthInfo||jieMonthInfo(referenceDate),fy=fortuneYearStart(referenceDate),rangeText=fortuneSolarRangeText(mi.start,mi.end,{referenceYear:referenceDate.getFullYear(),withTime:false});return `<div class="fortune-query-note fortune-calendar-basis"><b>날짜 기준</b><span>조회 날짜 ${fortuneKoreanDate(referenceDate)} · ${mi.name} 절기월 ${rangeText} · 세운 ${fy}년(입춘 기준)</span></div>`})():'';
       const technical=`<details class="fortune-engine-details"><summary>운이 왜 이렇게 나왔는지 · 전문 계산 근거</summary><div class="fortune-engine-body">${periodExplain(t,ten,copy,relations,balance,bundle)}<div class="structure-note"><b>원국 → 대운 → 세운 → 월운 → 일운 trace</b><br>${narr.synthesis?.reason||''}</div><div class="structure-note"><b>10년 흐름과 함께 보면</b><br>${fortuneDayunContext(referenceDate,currentRange)}</div><div class="evidence-list">${evidenceHtml(bundle,t,stage,shin,relations)}</div><p>${currentRange==='year'?'선택한 해는 원국 → 대운 후보 → 세운까지 사용합니다.':currentRange==='month'?'선택한 절기월은 원국 → 대운 후보 → 세운 → 월운까지 사용합니다. 특정 하루의 일운은 월 전체 판단에서 제외합니다.':'선택한 날짜는 원국 → 대운 후보 → 세운 → 월운 → 일운을 사용하되 일운은 마지막 촉발 요인으로 읽습니다.'}</p></div></details>`;
       let legacyColor='';const colorShell=document.getElementById('colorShell');if(!u.uncertain){legacyColor=fortuneHtmlCopy(buildColorGuideMarkup(referenceDate),currentRange,referenceDate)}if(colorShell){colorShell.hidden=true;colorShell.removeAttribute('open')}
-      const summary=`${uncertainty}${calendarBasis}<section class="fortune-oracle" data-judgment-id="${narr.traceId||''}"><div class="fortune-oracle-head"><small>${headerLabel}</small><span class="fortune-oracle-badge">${badge}</span></div><h3>${narr.headline}</h3><p>${narr.remember}</p></section><div class="fortune-action-pair"><div class="fortune-action-card is-use"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 살릴 것':'이 날짜에 살릴 것'):currentRange==='month'?'이 절기월에 살릴 것':'이 해에 살릴 것'}</small><strong>${fortunePublicCopy(useText)}</strong></div><div class="fortune-action-card is-reduce"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 줄일 것':'이 날짜에 줄일 것'):currentRange==='month'?'이 절기월에 줄일 것':'이 해에 줄일 것'}</small><strong>${fortunePublicCopy(reduceText)}</strong></div></div><p class="fortune-relative-note"><b>일반 안전 주의</b> ${narr.safety||''}</p><section class="fortune-section"><div class="fortune-section-head"><h4>먼저 볼 생활영역</h4><small>신호가 선명한 3곳</small></div><div class="fortune-domain-list">${domainRows}</div></section>`;
+      const summary=`${uncertainty}${calendarBasis}<section class="fortune-oracle" data-judgment-id="${narr.traceId||''}"><div class="fortune-oracle-head"><small>${headerLabel}</small><span class="fortune-oracle-badge">${badge}</span></div><h3>${narr.headline}</h3><p>${narr.remember}</p></section><div class="fortune-action-pair"><div class="fortune-action-card is-use"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 우선할 것':'이 날짜에 우선할 것'):currentRange==='month'?'이 절기월에 우선할 것':'이 해에 우선할 것'}</small><strong>${fortunePublicCopy(useText)}</strong></div><div class="fortune-action-card is-reduce"><small>${currentRange==='today'?(fortuneIsActualDay(referenceDate)?'오늘 조심할 것':'이 날짜에 조심할 것'):currentRange==='month'?'이 절기월에 조심할 것':'이 해에 조심할 것'}</small><strong>${fortunePublicCopy(reduceText)}</strong></div></div><p class="fortune-relative-note"><b>일반 안전 주의</b> ${narr.safety||''}</p><section class="fortune-section"><div class="fortune-section-head"><h4>먼저 볼 생활영역</h4><small>신호가 선명한 3곳</small></div><div class="fortune-domain-list">${domainRows}</div></section>`;
       const fields=`<section class="fortune-section"><div class="fortune-section-head"><h4>${currentRange==='today'?'오늘의 생활영역':currentRange==='month'?'이 절기월의 생활영역':'이 해의 생활영역'}</h4><small>전체 판단</small></div>${detailRows}</section>`;
       const living=fortuneColorPanelMarkup(referenceDate,currentRange,u,legacyColor);
       const week=currentRange==='today'?(u.uncertain?`<div class="fortune-query-note"><b>날짜 주변</b><span>대운 경계에 걸린 조회라 앞뒤 날짜의 단순 순위 비교는 보류합니다.</span></div>`:`<div class="fortune-query-note"><b>앞뒤 3일 비교</b><span>일운 차이를 짧게 비교합니다.</span></div>${weekChoices()}`):'';
@@ -15398,8 +15538,9 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
     /* 02 왜 이런 모습이 나타나는가 */
     var reason=section('consult-reason-card',true);reason.appendChild(head(2,'왜 이런 모습이 나타나는가','전문용어보다 결론과 쉬운 이유를 먼저 보여드립니다.'));
     var steps=document.createElement('div');steps.className='consult-reason-steps';
-    var seedPs=seed?Array.from(seed.querySelectorAll('p')):[];
-    [['결론',heroLead],['쉬운 이유',seedPs[0]?.textContent||''],['현실에서',seedPs[1]?.textContent||'']].forEach(function(x){if(!x[1])return;var d=document.createElement('div');d.className='consult-reason-step';var b=document.createElement('b');b.textContent=x[0];var sp=document.createElement('span');sp.textContent=x[1];d.append(b,sp);steps.appendChild(d)});reason.appendChild(steps);
+    var seedPs=seed?Array.from(seed.querySelectorAll('p')):[],judgmentTrace=(window.__SAJUGYEOL_JUDGMENT_TRACE__||{}),judgmentBridge=judgmentTrace.meaningBridge||judgmentTrace.interpretationBridge||null;
+    var reasonRows=judgmentBridge?[['명리 판단',judgmentBridge.technical],['쉽게 말하면',judgmentBridge.easy],['생활에서는',judgmentBridge.life]]:[['결론',heroLead],['쉬운 이유',seedPs[0]?.textContent||''],['현실에서',seedPs[1]?.textContent||'']];
+    reasonRows.forEach(function(x){if(!x[1])return;var d=document.createElement('div');d.className='consult-reason-step';var b=document.createElement('b');b.textContent=x[0];var sp=document.createElement('span');sp.textContent=x[1];d.append(b,sp);steps.appendChild(d)});reason.appendChild(steps);
     if(seed){var rm=document.createElement('details');rm.className='consult-reason-more';rm.innerHTML='<summary>명리 근거를 더 자세히 보기</summary>';rm.appendChild(seed);reason.appendChild(rm)}shell.appendChild(reason);
 
     /* 03 일 돈 관계 */
@@ -15552,7 +15693,7 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
     return '빠르면 '+fast.text+', 늦으면 '+late.text
   }
   function bigFlowUnknownProgress(index,date){var r=bigFlowUnknownRange(index);if(!r)return null;function one(s,e){var a=bigFlowJsDate(s),b=bigFlowJsDate(e);return Math.max(0,Math.min(100,Math.round((date-a)/(b-a)*100)))}var vals=[one(r.min,r.endMin),one(r.max,r.endMax)].sort((a,b)=>a-b);return {minPct:vals[0],maxPct:vals[1],range:r}}
-    function bigFlowUpdateScale(state){var scale=document.querySelector('#dayunOverview .bigflow-track-scale');if(!scale)return;var html;if(state.kind==='prebirth')html='<span><i class="bigflow-scale-dot current"></i>현재 · 출생 전</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>출생 이후 → 미래</span>';else if(state.kind==='pre')html='<span><i class="bigflow-scale-dot current"></i>현재 · 첫 대운 전</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>첫 대운 → 미래</span>';else if(state.kind==='uncertain')html='<span><i class="bigflow-scale-dot current"></i>현재 · 전환 가능</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>← 후보 흐름 →</span>';else if(state.kind==='post')html='<span><i class="bigflow-scale-dot current"></i>현재 · 표시 범위 이후</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>← 지나온 흐름</span>';else html='<span><i class="bigflow-scale-dot current"></i>현재 위치</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>← 과거 · 미래 →</span>';if(scale.innerHTML!==html)scale.innerHTML=html}
+    function bigFlowUpdateScale(state){var scale=document.querySelector('#dayunOverview .bigflow-track-scale');if(!scale)return;var html;if(state.kind==='prebirth')html='<span><i class="bigflow-scale-dot current"></i>현재 · 출생 전</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>출생 이후 → 미래</span>';else if(state.kind==='pre')html='<span><i class="bigflow-scale-dot current"></i>현재 · 첫 10년 흐름 전</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>첫 10년 흐름 → 미래</span>';else if(state.kind==='uncertain')html='<span><i class="bigflow-scale-dot current"></i>현재 · 전환 가능</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>← 후보 흐름 →</span>';else if(state.kind==='post')html='<span><i class="bigflow-scale-dot current"></i>현재 · 표시 범위 이후</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>← 지나온 흐름</span>';else html='<span><i class="bigflow-scale-dot current"></i>현재 위치</span><span><i class="bigflow-scale-dot selected"></i>선택 중</span><span>← 과거 · 미래 →</span>';if(scale.innerHTML!==html)scale.innerHTML=html}
 
       function bigFlowSyncActualCurrentClass(){var list=document.getElementById('dayunList');if(!list)return null;var state=bigFlowActualState(),items=Array.from(list.querySelectorAll('.dayun-item'));items.forEach(function(x,i){x.classList.toggle('current',state.kind==='current'&&state.currentIndex===i);x.classList.toggle('possible-current',state.kind==='uncertain'&&state.possibleIndices.includes(i));x.classList.toggle('upcoming-first',i===0&&(state.kind==='prebirth'||state.kind==='pre'||(state.kind==='uncertain'&&state.prePossible)))});bigFlowUpdateScale(state);return state.kind==='current'&&state.currentIndex!=null?items[state.currentIndex]||null:null}
   function bigFlowAgeLabel(text){var s=String(text||'');return /^\d+~\d+세$/.test(s)?s+' (대운 기준)':s}
@@ -16201,6 +16342,186 @@ body.app-result-open:not(.sg-home-mode),body.app-result-open.sg-home-mode{
   if(result){new MutationObserver(enhanceResult).observe(result,{childList:true,subtree:false});enhanceResult()}
 })();
 </script>
+<script id="sajugyeolPlainLanguageV015512">
+(function(){
+  'use strict';
+  /* v0.15.5.12 — FORTUNE PLAIN-LANGUAGE COLLISION REPAIR (presentation only)
+     Presentation only. Core/J1/E1/B1 calculation state is read, never recalculated. */
+  const PLAIN_TEN={
+    비견:{short:'내 기준',person:'내 기준이 분명하고 스스로 결정하려는 편입니다.',strength:'내가 맡은 일을 끝까지 책임지는 힘',life:'내 몫이 분명할 때 집중력이 잘 살아납니다.',caution:'모든 일을 혼자 결정하려 하면 협업이 답답해질 수 있습니다.',action:'내가 맡을 일과 다른 사람에게 맡길 일을 먼저 나눈 뒤 시작하세요.',theme:'내 기준과 역할 나누기'},
+    겁재:{short:'경쟁·분담',person:'경쟁이나 변화가 생기면 빠르게 움직이는 편입니다.',strength:'사람·돈·시간을 빠르게 나누고 다시 배치하는 힘',life:'상황이 빨리 바뀔 때 대응이 빠르고 기회를 놓치지 않는 편입니다.',caution:'경쟁심이 올라오면 돈·시간·책임을 필요 이상으로 크게 잡을 수 있습니다.',action:'쓸 돈과 시간, 내가 맡을 범위를 먼저 정한 뒤 움직이세요.',theme:'경쟁할 때 범위 정하기'},
+    식신:{short:'꾸준한 결과',person:'생각한 것을 실제 결과로 차근차근 만들어 가는 편입니다.',strength:'배운 것을 결과로 만들고 꾸준히 완성하는 힘',life:'자료·작품·서비스처럼 손에 잡히는 결과를 만들 때 장점이 잘 드러납니다.',caution:'편한 방식만 반복하면 시작은 늦고 마무리도 늘어질 수 있습니다.',action:'이미 시작한 일 가운데 하나를 골라 마감까지 끝내세요.',theme:'꾸준히 만들고 끝내기'},
+    상관:{short:'표현·개선',person:'문제점을 빨리 알아차리고 더 나은 방법을 찾는 편입니다.',strength:'말·글·아이디어로 문제를 고치고 새 방법을 제안하는 힘',life:'틀린 점을 찾거나 복잡한 내용을 정리해 설명할 때 강점이 잘 드러납니다.',caution:'맞는 말이라도 너무 빠르고 세게 말하면 상대가 방어적으로 반응할 수 있습니다.',action:'문제를 지적할 때는 해결 방법과 근거를 함께 제안하세요.',theme:'문제를 고치고 표현하기'},
+    편재:{short:'기회·연결',person:'새로운 사람·정보·기회를 넓게 보고 빠르게 연결하는 편입니다.',strength:'바깥의 기회와 사람·자원을 연결하는 힘',life:'새 제안이나 거래, 사람을 만나면서 기회를 찾을 때 장점이 드러납니다.',caution:'가능성이 많아 보일수록 관리할 일과 지출도 함께 커질 수 있습니다.',action:'새 제안은 비용·기한·담당을 비교한 뒤 조건이 분명한 것만 고르세요.',theme:'새 사람·기회 고르기'},
+    정재:{short:'관리·재정',person:'정해진 기준과 약속을 꾸준히 지키는 편입니다.',strength:'돈·일정·약속을 안정적으로 관리하는 힘',life:'예산과 마감처럼 기준이 분명한 일을 꾸준히 관리할 때 강점이 드러납니다.',caution:'안전한 방법만 고집하면 상황이 바뀌었을 때 대응이 늦을 수 있습니다.',action:'예산과 마감을 먼저 적고 정해 둔 범위 안에서 끝까지 마무리하세요.',theme:'돈·일정 관리하기'},
+    편관:{short:'급한 일·책임',person:'급한 일이나 압박이 생기면 빠르게 우선순위를 잡는 편입니다.',strength:'변수와 압박 속에서 결정을 내리고 대응하는 힘',life:'문제가 생겼을 때 해야 할 일을 빠르게 나누고 책임질 때 강점이 드러납니다.',caution:'모든 일을 긴급한 일처럼 받아들이면 쉽게 지치고 말도 강해질 수 있습니다.',action:'급한 일이 몰리면 중요도와 마감 순서로 나누고 감당할 범위를 넘기지 마세요.',theme:'급한 일과 책임'},
+    정관:{short:'책임·기준',person:'기준과 책임이 분명한 상황에서 안정적으로 움직이는 편입니다.',strength:'공식 기준과 약속을 지키며 신뢰를 쌓는 힘',life:'평가·보고·책임처럼 기준이 분명한 일을 맡을 때 강점이 드러납니다.',caution:'기준을 지키려는 마음이 커지면 필요 이상으로 책임을 떠안을 수 있습니다.',action:'평가·보고가 있는 일은 요구사항과 책임 범위를 먼저 확인하세요.',theme:'약속과 책임'},
+    편인:{short:'탐구·새 관점',person:'익숙한 답보다 다른 관점과 새로운 방법을 찾는 편입니다.',strength:'낯선 정보를 탐구하고 다른 방식으로 해석하는 힘',life:'새로운 분야를 공부하거나 기존 방식의 빈틈을 찾을 때 강점이 드러납니다.',caution:'정보를 너무 오래 모으면 실제 행동이 늦어질 수 있습니다.',action:'자료를 충분히 보되 실제로 시험해 볼 한 가지를 정해 실행하세요.',theme:'새 방법 찾고 시험하기'},
+    정인:{short:'배움·지원',person:'자료와 조언을 충분히 확인한 뒤 움직이는 편입니다.',strength:'배우고 기록하고 도움을 받아 기반을 단단하게 만드는 힘',life:'자료를 정리하거나 도움을 받아 준비를 탄탄하게 만들 때 강점이 드러납니다.',caution:'준비가 충분한데도 계속 확인만 하다 보면 시작이 늦어질 수 있습니다.',action:'자료와 조언을 확인한 뒤 준비가 끝난 한 가지부터 실행하세요.',theme:'배우고 준비하기'}
+  };
+  const ELEMENT_USE={목:'새 일을 시작하고 키우는 힘',화:'표현하고 실행하며 속도를 내는 힘',토:'생활과 자원을 정리하고 버티는 힘',금:'기준을 세우고 불필요한 것을 덜어내는 힘',수:'정보를 모으고 상황에 맞게 바꾸는 힘'};
+  const TEN_PILLAR={비견:'내 기준',겁재:'경쟁·분담',식신:'꾸준한 결과',상관:'표현·개선',편재:'기회·거래',정재:'관리·재정',편관:'급한 일·책임',정관:'책임·기준',편인:'탐구·변화',정인:'배움·지원','나 자신':'나 자신','시간 미상':'시간 미상'};
+  const plainStrength=(d)=>d==='WEAK'?'다만 혼자 너무 많은 일을 한꺼번에 떠안으면 힘이 빨리 떨어질 수 있습니다. 할 일을 좁혀 하나씩 끝내는 편이 더 잘 맞습니다.':d==='STRONG'?'힘이 충분한 편이라 일을 더 벌이는 것보다 무엇을 안 할지 정하고 결과를 남기는 것이 중요합니다.':'상황에 따라 속도를 바꿀 수 있는 편이라, 무리하게 밀기보다 해야 할 일의 크기를 조절하면 장점이 오래 갑니다.';
+  function uniq(a){return [...new Set((a||[]).filter(Boolean))]}
+  function sent(t){return String(t||'').replace(/\s+/g,' ').trim()}
+  function plainRelation(rel){
+    if(!rel)return '';
+    const t=String(rel.type||'');
+    if(/충|형|파|해|원진/.test(t))return '사람이나 일정이 예상과 다르게 움직일 때가 있으니, 바뀐 조건을 바로 확인하고 역할을 다시 나누는 편이 좋습니다.';
+    if(/합/.test(t))return '사람이나 일이 자연스럽게 엮이기 쉬운 편이라, 함께할 때는 누가 무엇을 맡는지 처음부터 분명히 정해 두는 편이 좋습니다.';
+    return '함께하는 사람이 있다면 기대와 역할을 말로 확인할수록 장점이 더 편하게 살아납니다.';
+  }
+  function plainRoleOverlap(contract){
+    const x=(contract?.elements||[]).find(e=>e.overlap)||null;if(!x)return '';
+    const name=typeof elementName==='function'?elementName(x.element):x.element,fn=ELEMENT_USE[x.element]||'생활에 필요한 힘';
+    const methods=uniq((x.roles||[]).map(r=>r.method));
+    let need='이 힘은 부족한 부분을 메우는 데 도움이 됩니다.';
+    if(methods.includes('climate'))need='태어난 계절과 전체 구성을 맞추는 데 이 힘이 필요합니다.';
+    else if(methods.includes('disease'))need='막혀 있는 부분을 풀어 실제로 움직이게 하는 데 이 힘이 필요합니다.';
+    else if(methods.includes('bridge'))need='서로 맞서는 성향을 부드럽게 이어 주는 데 이 힘이 필요합니다.';
+    else if(methods.includes('gyeok')||methods.includes('gyeokYongshin'))need='타고난 장점을 제대로 쓰는 데 이 힘이 필요합니다.';
+    return `${fn}은 도움이 됩니다. ${need} 다만 일정과 활동량이 이미 많을 때 같은 힘을 더 쓰면 오히려 지칠 수 있습니다. 필요할 때는 적극적으로 쓰고, 이미 일이 많다면 속도와 범위를 줄이면 됩니다.`;
+  }
+  const _buildNatal=window.buildNatalSynthesisState;
+  if(typeof _buildNatal==='function')window.buildNatalSynthesisState=function(){
+    const old=_buildNatal.apply(this,arguments),tr=old.trace||{},ten=old.socialTen||tr.socialTen||'비견',p=PLAIN_TEN[ten]||PLAIN_TEN.비견,dir=tr.strength?.direction||'',rel=plainRelation(tr.relation),overlap=plainRoleOverlap(old.roleProvenance||tr.roleProvenance),stem=(typeof stemHomeMeaning!=='undefined'&&stemHomeMeaning[natal?.getDayGan?.()])||p.person;
+    const headline=`${stem} 특히 ${p.strength}이 가장 큰 강점입니다.`;
+    const easyReason=`${p.strength}이 가장 두드러집니다. ${plainStrength(dir)}${overlap?` ${overlap}`:''}`;
+    const reality=`실제 생활에서는 ${p.life} ${rel}`.trim();
+    const caution=`${p.caution} ${dir==='WEAK'?'일이 많아질수록 더 버티기보다 할 일을 줄이고 도움을 받는 편이 낫습니다.':''}${overlap?' 같은 힘도 이미 충분할 때는 더 늘리지 않는 것이 중요합니다.':''}`.trim();
+    const action=p.action;
+    return {...old,headline,easyReason,reality,caution,action,meaningBridge:{technical:old.meaningBridge?.technical||'',easy:easyReason,life:`${reality} ${action}`,caution}};
+  };
+
+  function plainPeriodKind(k){return k==='support'?'준비한 일을 실제로 해보기 좋은 조건이 더 많습니다.':k==='burden'?'새 일을 늘리기보다 이미 잡힌 일을 정리하고 점검하는 편이 낫습니다.':k==='mixed'?'좋은 점과 부담이 같이 있으니 할 일을 좁혀 움직이는 편이 좋습니다.':'큰 방향을 바꾸기보다 평소 하던 일을 안정적으로 이어가는 편이 좋습니다.'}
+  function plainFortuneRelation(rels){const a=rels||[],clash=a.some(x=>/충|형|파|해|원진/.test(String(x))),join=a.some(x=>String(x).includes('합'));if(clash&&join)return '사람이나 일이 이어질 수 있지만 일정이나 역할이 바뀔 수도 있으니, 약속과 담당을 다시 확인하세요.';if(clash)return '예상과 다른 변수가 생길 수 있으니 일정·역할·비용에 여유를 남겨 두세요.';if(join)return '사람이나 일이 연결되기 쉬우니, 약속과 담당을 분명히 정해 두세요.';return ''}
+  const _periodNarrative=window.periodNarrative;
+  if(typeof _periodNarrative==='function')window.periodNarrative=function(range,bundle,t){
+    const o=_periodNarrative.apply(this,arguments),s=o.synthesis||{},h=s.hierarchy||{},ten=s.topicTen||o.ten||'비견',p=PLAIN_TEN[ten]||PLAIN_TEN.비견,kind=s.kind||'neutral',rel=plainFortuneRelation(s.allRelations),parentTen=h.parentTen||h.parent?.ten||null,parent=parentTen?(PLAIN_TEN[parentTen]||PLAIN_TEN.비견):null;
+    let headline='',core='',remember='';
+    if(range==='year'){
+      headline=`올해는 ${p.theme}이 중요해집니다. ${plainPeriodKind(kind)}`;
+      core=`지금 이어지는 10년의 큰 배경 위에 올해는 ${p.strength}이 더 두드러집니다. ${rel}`.trim();
+      remember=`올해는 ${p.action}`;
+    }else if(range==='month'){
+      if(h.sameTen)headline=`이번 달은 올해와 큰 주제는 비슷합니다. 다만 한 달 안에서는 ${withJosa(p.theme,'을/를')} 더 세밀하게 챙겨야 합니다.`;
+      else headline=`올해의 중심은 ‘${parent?.theme||'큰 주제'}’입니다. 이번 달에는 ${withJosa(p.theme,'을/를')} 더 챙기는 편이 좋습니다.`;
+      core=`${h.sameTen?'올해와 같은 주제가 이어지지만, 이번 달의 일정과 관계 조건이 더해집니다.':'올해와 이번 달의 중심 과제가 달라졌기 때문에 행동 기준도 조금 달라집니다.'} ${plainPeriodKind(kind)} ${rel}`.trim();
+      remember=`이번 달에는 ${p.action}`;
+    }else{
+      if(h.sameTen)headline=`오늘은 한 달 전체 흐름과 큰 주제는 비슷합니다. 다만 오늘 하루에는 ${withJosa(p.theme,'을/를')} 바로 행동으로 옮기는 방식이 중요합니다.`;
+      else headline=`이번 달의 중심은 ‘${parent?.theme||'큰 흐름'}’입니다. 오늘은 ${withJosa(p.theme,'을/를')} 더 챙기는 편이 좋습니다.`;
+      core=`${h.sameTen?'이번 달의 방향은 이어지지만 오늘의 일정·사람·선택이 마지막 차이를 만듭니다.':'오늘은 이번 달과 다른 과제가 추가되어 무엇을 먼저 할지가 달라집니다.'} ${plainPeriodKind(kind)} ${rel}`.trim();
+      remember=`오늘은 ${p.action}`;
+    }
+    return {...o,headline,core,use:p.action,caution:p.caution+(rel?` ${rel}`:''),remember,work:`일에서는 ${p.life} ${p.action}`,money:`돈에서는 큰 결정보다 비용·기한·손실 범위를 먼저 확인하세요. ${p.caution}`,people:`사람을 대할 때는 ${p.life} ${plainFortuneRelation(s.allRelations)||'기대와 역할을 말로 확인하세요.'}`,meeting:plainFortuneRelation(s.allRelations)||'중요한 대화는 원하는 것과 맡을 일을 짧게 확인하세요.',choice:p.action,family:`가까운 관계에서는 ${plainFortuneRelation(s.allRelations)||'상대의 생각을 추측하기보다 기대와 역할을 직접 확인하세요.'}`,growth:`배움이나 준비가 필요한 일은 한 번에 많이 늘리기보다 지금 필요한 한 가지를 실제 결과로 남기세요.`,change:`변화가 필요하다면 되돌릴 수 있는 작은 범위부터 시작하고 비용과 일정에 여유를 남겨 두세요.`};
+  };
+
+  const _buildLife=window.buildLifeDomainNarrative;
+  const DOMAIN_STATE={
+    finance:{support:'돈을 움직일 기회가 생기기 쉬운 때입니다. 조건이 맞는 거래만 골라 움직이세요.',active:'수입·거래가 활발해질 수 있습니다. 늘리는 것만큼 관리할 범위도 함께 확인하세요.',adjust:'돈은 늘리기보다 새는 곳과 바뀐 조건부터 바로잡을 때입니다.',check:'새 지출이나 거래보다 예산과 기존 계약을 먼저 점검할 때입니다.',mixed:'돈을 움직일 기회와 부담이 함께 있습니다. 금액보다 조건을 먼저 비교하세요.',steady:'큰 변화를 만들기보다 예산과 기존 지출을 안정적으로 관리할 때입니다.'},
+    career:{support:'준비해 온 일을 실제 성과로 보여주기 좋은 때입니다.',active:'일이 늘고 역할이 커질 수 있습니다. 우선순위를 정해 결과가 남는 일부터 하세요.',adjust:'일의 방향보다 역할·마감·기준을 먼저 다시 맞출 때입니다.',check:'새 일을 늘리기보다 이미 맡은 일의 책임과 마감을 점검할 때입니다.',mixed:'기회와 부담이 함께 있어 맡을 일과 거절할 일을 나눠야 합니다.',steady:'새 역할보다 지금 맡은 일을 안정적으로 완성하는 편이 좋습니다.'},
+    exam:{support:'준비한 내용을 실제 답변·발표·문제풀이로 꺼내 보기 좋은 때입니다.',active:'평가와 출력 기회가 늘 수 있습니다. 공부한 것을 실제로 써 보는 연습을 늘리세요.',adjust:'더 공부하기보다 답변 방식과 시간 배분을 먼저 고칠 때입니다.',check:'새 자료를 늘리기보다 이미 공부한 내용을 점검하고 실전 연습을 할 때입니다.',mixed:'아는 내용과 실제 출력 사이의 차이를 줄이는 것이 중요합니다.',steady:'공부량을 크게 늘리기보다 꾸준한 복습과 실전 연습을 이어가세요.'},
+    relationship:{support:'대화와 만남을 이어 가기 좋은 편입니다. 기대와 약속을 분명히 하면 더 편합니다.',active:'사람을 만나거나 관계가 움직일 일이 늘 수 있습니다. 속도보다 약속과 경계를 확인하세요.',adjust:'관계를 밀어붙이기보다 서로 기대하는 것과 거리부터 다시 맞출 때입니다.',check:'결론을 서두르기보다 오해가 없는지 사실과 감정을 나눠 확인할 때입니다.',mixed:'가까워질 기회와 불편한 지점이 함께 있어 대화가 중요합니다.',steady:'큰 결론보다 평소 약속과 연락 방식을 안정적으로 지키는 편이 좋습니다.'},
+    family:{support:'가족 안에서 도움을 주고받기 좋은 편입니다. 누가 무엇을 맡을지 분명히 하세요.',active:'가족 일정과 책임이 늘 수 있습니다. 한 사람에게 일이 몰리지 않게 나누세요.',adjust:'가족의 기대와 내가 맡을 범위를 다시 맞출 때입니다.',check:'새 책임을 더 맡기보다 지금 맡은 돌봄·비용·일정을 먼저 점검하세요.',mixed:'도움과 부담이 함께 있어 역할 분담이 중요합니다.',steady:'평소 역할을 유지하되 필요한 도움을 미리 요청하는 편이 좋습니다.'},
+    cooperation:{support:'함께 일하거나 도움을 받기 좋은 편입니다. 역할과 결과 기준을 먼저 나누세요.',active:'협업과 피드백이 늘 수 있습니다. 담당과 마감을 명확히 하세요.',adjust:'사람을 바꾸기보다 역할·권한·성과 기준을 먼저 다시 맞출 때입니다.',check:'새 협업보다 기존 약속과 분담이 잘 지켜지는지 점검할 때입니다.',mixed:'도움과 경쟁이 함께 있을 수 있어 역할과 비용을 분명히 해야 합니다.',steady:'새 사람을 늘리기보다 믿을 수 있는 협업 방식을 유지하는 편이 좋습니다.'},
+    condition:{support:'생활 리듬을 회복하고 컨디션을 정리하기 좋은 편입니다.',active:'일정과 활동량이 늘 수 있습니다. 쉬는 시간을 먼저 확보하세요.',adjust:'버티기보다 수면·식사·일정 밀도를 먼저 다시 맞출 때입니다.',check:'새 약속을 늘리기보다 피로와 회복 상태를 먼저 확인할 때입니다.',mixed:'할 일은 있지만 몸의 여유도 함께 챙겨야 합니다.',steady:'큰 변화를 만들기보다 수면·식사·휴식 리듬을 꾸준히 지키세요.'},
+    movement:{support:'준비해 온 이동이나 변화를 작은 범위에서 시작해 보기 좋은 편입니다.',active:'이동·변화가 늘 수 있습니다. 비용과 되돌릴 방법을 남겨 두세요.',adjust:'방향을 바꾸기보다 일정·비용·대안을 먼저 다시 맞출 때입니다.',check:'큰 이동보다 현재 계획의 비용과 안전 조건을 먼저 점검할 때입니다.',mixed:'움직일 이유와 부담이 함께 있어 작은 변화부터 시험하는 편이 좋습니다.',steady:'지금 자리를 정리하면서 다음 변화를 준비하는 편이 좋습니다.'},
+    contract:{support:'문서와 조건이 맞는 계약은 검토 후 진행해 볼 수 있는 편입니다.',active:'계약·구매·협의가 늘 수 있습니다. 금액과 책임 범위를 문서로 남기세요.',adjust:'서명보다 변경·해지·비용 조건을 먼저 다시 맞출 때입니다.',check:'새 계약보다 기존 조항과 책임을 한 번 더 확인할 때입니다.',mixed:'진행할 이유와 수정할 조건이 함께 있어 서두르지 않는 편이 좋습니다.',steady:'새 계약을 늘리기보다 기존 문서와 약속을 안정적으로 관리하세요.'}
+  };
+  if(typeof _buildLife==='function')window.buildLifeDomainNarrative=function(e){const o=_buildLife.apply(this,arguments),k=e?.state?.key||'mixed',d=e?.domain||'',headline=DOMAIN_STATE[d]?.[k]||o.headline;return {...o,headline,now:headline,why:`${headline} ${plainFortuneRelation((e?.relation?.items||[]).map(x=>x.text||x))}`.trim(),technicalRoles:o.technicalRoles};};
+  const _easyStateLabel=window.easyStateLabel;
+  if(typeof _easyStateLabel==='function')window.easyStateLabel=function(state){return ({support:'움직여 보기 좋음',active:'움직임이 많음',adjust:'조건부터 다시 보기',check:'점검이 먼저',mixed:'골라서 움직이기',steady:'유지하기'})[state?.key]||'상황을 보고 결정'};
+  const _fortuneStateLabel=window.fortuneStateLabel;
+  if(typeof _fortuneStateLabel==='function')window.fortuneStateLabel=function(key){return ({active:'움직임이 많음',support:'해보기 좋음',mixed:'골라서 움직이기',adjust:'조건부터 다시 보기',check:'점검이 먼저',steady:'유지하기',neutral:'평소대로 유지'})[key]||'상황을 보고 결정';};
+  const _decadeTone=window.decadeTone;
+  if(typeof _decadeTone==='function')window.decadeTone=function(balance){const o=_decadeTone.apply(this,arguments);if(balance?.kind==='support')return {...o,label:'준비한 일을 실행해 볼 10년',tone:'기회가 보일 때 준비한 일을 실제 결과로 연결하기 좋은 시기'};if(balance?.kind==='burden')return {...o,label:'확장보다 정리가 중요한 10년',tone:'새 일을 늘리기보다 돈·일정·책임을 정리하고 지키는 시기'};if(balance?.kind==='mixed')return {...o,label:'할 일을 골라야 하는 10년',tone:'좋은 점과 부담이 함께 있어 조건이 맞는 일만 골라 움직이는 시기'};return {...o,label:'기반을 다지는 10년',tone:'지금 하는 일을 안정적으로 다듬고 다음 변화를 준비하는 시기'};};
+  const _yearTone=window.consultationYearTone;
+  if(typeof _yearTone==='function')window.consultationYearTone=function(bundle,ten){const o=_yearTone.apply(this,arguments),p=PLAIN_TEN[ten]||PLAIN_TEN.비견,k=o.direction?.kind||'neutral';return {...o,label:k==='support'?'준비한 일을 실행해 볼 해':k==='burden'?'새 일보다 지키는 게 중요한 해':k==='mixed'?'할 일을 골라야 하는 해':'정리하고 준비하는 해',text:`${p.theme}이 중요해지는 해입니다. ${plainPeriodKind(k)} ${p.action}`};};
+
+  function replaceText(root,pairs){if(!root)return;const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];while(w.nextNode())nodes.push(w.currentNode);nodes.forEach(n=>{let s=n.nodeValue||'',o=s;pairs.forEach(([a,b])=>s=s.replace(a,b));if(s!==o)n.nodeValue=s});}
+  function replaceExact(root,map){if(!root)return;const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];while(w.nextNode())nodes.push(w.currentNode);nodes.forEach(n=>{const k=sent(n.nodeValue);if(map[k])n.nodeValue=(n.nodeValue||'').replace(k,map[k])});}
+  const COMMON=[
+    [/관계·역할 신호/g,'사람과 역할이 얽히는 부분'],[/필요한 기능/g,'필요한 힘'],[/활용 신호/g,'도움이 되는 조건'],[/조절 신호/g,'부담을 줄여야 하는 조건'],[/압박 속의 대응/g,'급한 일에 대응하는 힘'],
+    [/밀어볼 해/g,'준비한 일을 실행해 볼 해'],[/밀어볼 때/g,'준비한 일을 실행해 볼 때'],[/골라 쓸 해/g,'할 일을 골라야 하는 해'],[/지킬 해/g,'새 일보다 지키는 게 중요한 해'],[/다듬을 해/g,'정리하고 준비하는 해'],[/살릴 것/g,'잘 써볼 것'],[/줄일 것/g,'조심할 것'],[/밀어볼 것/g,'먼저 해볼 것'],[/살릴 곳/g,'잘 써볼 부분'],
+    [/조건부터 고칠 때/g,'조건부터 다시 볼 때'],[/신호가 선명한 3곳/g,'먼저 볼 3가지'],[/명리 근거를 더 자세히 보기/g,'세부 계산은 전문 분석에서 보기'],[/명리 근거 전체 보기/g,'세부 계산은 전문 분석에서 보기'],[/선택한 10년의 명리 근거 보기/g,'세부 계산은 전문 분석에서 보기'],[/전문용어보다 결론과 쉬운 이유를 먼저 보여드립니다\./g,'왜 이런 모습이 나타나는지 쉬운 말로 설명합니다.'],[/타고난 구조와 시기가 어떻게 만나는가/g,'나이가 들면서 무엇이 달라지는가'],[/여기서는 시기 판단을 반복하지 않고 연결만 보여드립니다\. 10년·연도별 완성된 판단은 큰 흐름 페이지에서 확인하세요\./g,'여기서는 10년 흐름과 해마다 달라지는 점만 간단히 봅니다.'],[/시기 연결 · 자세한 판단은 큰 흐름에서/g,'큰 흐름에서 자세히 보기'],[/시기 연결/g,'자세히 보기'],[/타고난 구조와 이 해의 조건이 만나는 지점만 확인합니다\./g,'이 해에 무엇이 달라지는지는 큰 흐름에서 자세히 볼 수 있습니다.'],[/일주 · 잘 쓰는 힘 · 현재 흐름까지 자세히/g,'성향을 조금 더 자세히 보기'],[/타고난 구조가 현실 영역과 만나는 이유/g,'타고난 성향이 생활에서 나타나는 모습'],[/타고난 역할이 일에서 드러나는 배경/g,'일할 때 나타나는 기본 모습'],[/자원과 기준이 돈에서 드러나는 배경/g,'돈을 다룰 때 나타나는 기본 모습'],[/기대와 경계가 관계에서 드러나는 배경/g,'가까운 관계에서 나타나는 기본 모습'],[/10년의 큰 계절과 해마다의 변화를 이어서 봅니다\./g,'몇 년씩 이어지는 큰 변화와 해마다 달라지는 점을 함께 봅니다.'],[/인생의 큰 흐름/g,'앞으로의 큰 흐름'],[/타고난 구조와 시기가 어디에서 맞물리는지만 연결하고[^.]*\./g,'지금 나이대에서 무엇이 더 중요해지는지만 간단히 보여드립니다.'],[/오래 이어지는 흐름에는 [‘']([^’']+)[’']이 반복해서 활성화됩니다\./g,'오랫동안 $1 관련 일이 자주 생길 수 있습니다.'],[/오래 이어지는 흐름에는 [‘']([^’']+)[’']가 반복해서 활성화됩니다\./g,'오랫동안 $1 관련 일이 자주 생길 수 있습니다.'],[/압박 속 대응과 책임/g,'급한 일과 책임'],[/압박 속의 대응과 책임/g,'급한 일과 책임'],[/활용$/g,'우선할 것'],[/확인$/g,'조심할 것']
+  ];
+  const PERIOD_PLAIN_TERMS=[[/절기월/g,'한 달 흐름'],[/대운/g,'10년 흐름'],[/세운/g,'올해 흐름'],[/월운/g,'이번 달 흐름'],[/일운/g,'오늘 흐름']];
+  function replaceGeneralPeriodTerms(root){
+    if(!root)return;
+    /* Context-first normalization prevents collisions such as “오늘 오늘 흐름”. */
+    replaceText(root,[
+      [/((?:19|20)\d{2})년 12절기월 흐름 보기/g,'$1년 월별 흐름 보기'],[/12절기월 흐름 보기/g,'월별 흐름 보기'],
+      [/선택한 날짜의 일운에서/g,'선택한 날짜의 흐름에서'],[/선택한 날짜에 일운에서/g,'선택한 날짜의 흐름에서'],
+      [/오늘의 일운에서/g,'오늘 흐름에서'],[/오늘 일운에서/g,'오늘 흐름에서'],
+      [/이번 달의 월운에서/g,'이번 달 흐름에서'],[/이번 달 월운에서/g,'이번 달 흐름에서'],
+      [/올해의 세운에서/g,'올해 흐름에서'],[/올해 세운에서/g,'올해 흐름에서'],
+      [/현재 대운에서/g,'현재 10년 흐름에서']
+    ]);
+    replaceText(root,PERIOD_PLAIN_TERMS);
+    replaceText(root,[
+      [/오늘 오늘 흐름/g,'오늘 흐름'],[/이번 달 이번 달 흐름/g,'이번 달 흐름'],[/올해 올해 흐름/g,'올해 흐름'],
+      [/선택한 날짜의 오늘 흐름/g,'선택한 날짜의 흐름'],[/현재 10년 흐름 10년 흐름/g,'현재 10년 흐름']
+    ]);
+  }
+  function applyHome(){const root=document.getElementById('beginnerCard');if(!root)return;replaceExact(root,{사주팔자:'내 사주 한눈에','태어난 순간의 네 기둥':'태어난 해·달·날·시간',시주:'태어난 시간',일주:'태어난 날',월주:'태어난 달',년주:'태어난 해','왜 이렇게 보나':'왜 이런 성향인가'});root.querySelectorAll('.sg-ten-god').forEach(x=>{const t=sent(x.textContent);if(TEN_PILLAR[t])x.textContent=TEN_PILLAR[t]});const b=root.querySelector('.sg-section-cap button');if(b)b.innerHTML='전문 분석 보기 <span>›</span>';replaceText(root,COMMON);replaceGeneralPeriodTerms(root);replaceExact(root,{점검:'정리 먼저',보완:'해보기 좋음',조율:'맞춰 가기',조정:'조건 다시 보기',혼합:'골라서 움직이기',연결:'사람·일 연결',유지:'그대로 유지'});replaceText(root,[[/10년 흐름 현재 · 세·월·일 오늘/g,'현재 10년 흐름 · 오늘까지의 변화'],[/10년 흐름 현재 · 세·월·일 선택 날짜[^\n]*/g,'현재 10년 흐름 · 선택한 날짜까지의 변화']]);}
+  function applyConsult(){const root=document.getElementById('practicalConsultCard');if(!root)return;const j=(typeof natal!=='undefined'&&natal&&typeof structureState!=='undefined'&&structureState)?window.buildNatalSynthesisState?.():null;if(j){const id=root.querySelector('.consult-identity-main');if(id)id.textContent=id.textContent.replace(/ · [^ ·]+일주/,'');const hero=root.querySelector('.consult-hero-lead');if(hero)hero.textContent=j.reality;const fw=root.querySelector('.consult-first-word strong');if(fw)fw.textContent=j.headline;const fp=root.querySelector('.consult-first-word p');if(fp)fp.textContent=j.reality;const steps=[...root.querySelectorAll('.consult-reason-step')];const rows=[['왜 이렇게 보나요?',j.easyReason],['실제로는',j.reality],['이렇게 해보세요',`${j.action} ${j.caution}`]];steps.forEach((d,i)=>{if(!rows[i])return;const b=d.querySelector('b'),sp=d.querySelector('span');if(b)b.textContent=rows[i][0];if(sp)sp.textContent=rows[i][1]});['.consult-reason-more','.consult-evidence-compact'].forEach(sel=>{const det=root.querySelector(sel);if(det){const sm=det.querySelector(':scope>summary');if(sm)sm.textContent='세부 계산은 전문 분석에서 보기';}});const an=root.querySelector('.consult-analysis-more');if(an){const sm=an.querySelector(':scope>summary');if(sm)sm.textContent='성향을 조금 더 자세히 보기';}}
+    root.querySelectorAll('.consult-priority-compact summary b').forEach((b,i)=>b.textContent=['① 먼저 해볼 것','② 잘 써볼 것','③ 조심할 것'][i]||b.textContent);replaceText(root,COMMON);replaceGeneralPeriodTerms(root);
+  }
+  function applyLife(){const root=document.getElementById('domainCard');if(!root)return;replaceText(root,[[/수입활동·지출·구매·거래·예산·재정 결정을 어떻게 다룰까\?/g,'돈을 벌고 쓰고 관리할 때 무엇을 먼저 볼까?'],[/책임·평가·성과·조직 안 역할을 어떻게 활용할까\?/g,'일할 때 무엇을 맡고 어떻게 성과를 보여줄까?'],[/배우고 정리한 것을 평가 상황에서 얼마나 안정적으로 꺼내 쓸까\?/g,'공부한 것을 시험·면접·발표에서 어떻게 잘 꺼내 쓸까?'],[/만남·표현·약속·경계·거리 조율이 어떻게 부각될까\?/g,'사람을 만날 때 무엇을 말하고 어디까지 맞춰야 할까?'],[/가족 일정·돌봄·책임·지원에서 나의 역할을 어떻게 조절할까\?/g,'가족 안에서 내가 맡을 일과 도움받을 일을 어떻게 나눌까?'],[/혼자 추진할까, 피드백·조언·분담을 활용할까\?/g,'혼자 할 일과 함께할 일을 어떻게 나누는 게 좋을까?'],[/일정·긴장·활동량·회복 시간을 어떻게 조절할까\?/g,'바쁜 일정 속에서 언제 쉬고 얼마나 움직이는 게 좋을까?'],[/환경을 바꾸거나 새 일을 시작할 때 변화의 크기와 속도를 어떻게 잡을까\?/g,'이동하거나 새 일을 시작할 때 어느 정도부터 움직이는 게 좋을까?'],[/계약·서류·구매·협약을 확정할까, 검토·협상할까\?/g,'계약이나 큰 구매를 할 때 무엇을 꼭 확인해야 할까?'],[/이 날짜 자체가 좋은가가 아니라, 이 목적에 상대적으로 맞는가\?/g,'내가 하려는 일에 이 날짜가 얼마나 잘 맞을까?']]);const id=root.querySelector('.life-identity-main');if(id)id.textContent=id.textContent.replace(/ · [^ ·]+일주/,'');replaceText(root,COMMON);replaceGeneralPeriodTerms(root);const ev=root.querySelector('.life-evidence>summary');if(ev)ev.textContent='왜 이렇게 보나요?';}
+  const BIGFLOW_REPS=[...COMMON,[/바깥 기회와 거래가 중심 주제로 이어집니다\.?/g,'새로운 사람·일·거래가 늘기 쉬운 시기입니다.'],[/꾸준한 관리가 중심 주제로 이어집니다\.?/g,'돈·일정·약속을 꾸준히 관리하는 일이 중요해지는 시기입니다.'],[/표현과 개선이 중심 주제로 이어집니다\.?/g,'말·글·아이디어로 문제를 고치고 표현하는 일이 중요해지는 시기입니다.'],[/독특한 탐구와 직관이 중심 주제로 이어집니다\.?/g,'새로운 관점으로 배우고 탐구하는 일이 중요해지는 시기입니다.'],[/학습과 문서·지원이 중심 주제로 이어집니다\.?/g,'배우고 기록하며 도움을 활용하는 일이 중요해지는 시기입니다.'],[/도전과 책임이 중심 주제로 이어집니다\.?/g,'책임이 커지고 급한 일에 대응할 일이 늘기 쉬운 시기입니다.'],[/공식 책임이 중심 주제로 이어집니다\.?/g,'기준과 책임이 분명한 일이 중요해지는 시기입니다.']];
+  function applyBigFlow(){const root=document.getElementById('dayunOverview');if(!root)return;replaceText(root,BIGFLOW_REPS);replaceGeneralPeriodTerms(root);replaceText(root.querySelector('.bigflow-track-scale'),[[/대운/g,'10년 흐름']]);replaceText(root,[[/현재 나이는 만 나이, 10년 흐름 카드의 나이는 출생연도를 1세로 세는 10년 흐름 계산 기준입니다\./g,'위의 만 나이와 10년 흐름 카드의 나이는 세는 방식이 달라 숫자가 다르게 보일 수 있습니다.'],[/선택한 10년 안의 연도만 보여줍니다\. 현재 시점은 위 시간축에 남고, 이곳에서는 탐색 중인 연도를 따로 표시합니다\./g,'선택한 10년 안에서 해마다 무엇이 달라지는지 볼 수 있습니다. 현재 위치는 위에 그대로 표시됩니다.']]);replaceExact(root,{점검:'정리 먼저',보완:'해보기 좋음',조율:'맞춰 가기',조정:'조건 다시 보기',혼합:'골라서 움직이기',연결:'사람·일 연결',유지:'그대로 유지'});root.querySelectorAll('.bigflow-year-detail b').forEach(b=>{if(sent(b.textContent)==='활용')b.textContent='우선할 것';if(sent(b.textContent)==='확인')b.textContent='조심할 것'});}
+  function applyFortune(){const root=document.getElementById('shortFortune');if(!root)return;const id=root.querySelector('.fortune-identity-main');if(id)id.textContent=id.textContent.replace(/ · [^ ·]+일주/,'');replaceText(root,COMMON);replaceGeneralPeriodTerms(root);replaceExact(root,{점검:'정리 먼저',보완:'해보기 좋음',조율:'맞춰 가기',조정:'조건 다시 보기',혼합:'골라서 움직이기',연결:'사람·일 연결',유지:'그대로 유지'});replaceText(root,[[/일반 안전 주의/g,'중요한 결정은 따로 확인하세요'],[/생활 보완/g,'생활 팁'],[/시간 흐름/g,'왜 이렇게 달라지나']]);}
+  const COMPAT_DIM_PLAIN={
+    C01:{label:'생활 방식',good:'서로 다른 강점이 빈 곳을 채워 줄 수 있습니다.',friction:'두 사람이 비슷한 방식으로 과해지는 부분이 있어 같은 문제가 한꺼번에 커질 수 있습니다.',reason:'돈·시간·생활 습관에서 한쪽으로 치우치는 부분이 겹치는지 봅니다.',action:'생활비·시간·집안일처럼 반복되는 일을 어떻게 나눌지 미리 정하세요.'},
+    C02:{label:'생활 리듬',good:'한 사람에게 부족한 생활 리듬을 다른 사람이 채워 줄 수 있습니다.',friction:'생활 속도와 표현 방식이 서로 부담이 될 수 있습니다.',reason:'한 사람이 편해지는 방식과 다른 사람이 실제로 가진 생활 리듬이 맞는지 봅니다.',action:'활동 속도와 쉬는 방식이 다르면 서로의 기준을 먼저 말로 맞추세요.'},
+    C03:{label:'서로에게 도움이 되는 점',good:'한 사람에게 도움이 되는 힘을 다른 사람이 가지고 있습니다.',friction:'좋다고 생각한 방식이 상대에게는 부담이 될 수 있습니다.',reason:'각자에게 도움이 되는 방향을 상대가 자연스럽게 보태 줄 수 있는지 봅니다.',action:'상대의 장점을 내 방식으로 바꾸려 하지 말고 잘하는 부분을 맡겨 보세요.'},
+    C04:{label:'부담을 키우는 부분',good:'한 사람이 힘들어하는 부분을 다른 사람이 덜어 줄 수 있습니다.',friction:'한 사람에게 부담이 되기 쉬운 부분을 다른 사람이 더 크게 자극할 수 있습니다.',reason:'한쪽에게 이미 벅찬 문제를 관계가 더 키우는지 확인합니다.',action:'반복해서 지치는 주제가 있다면 양과 속도를 줄이고 책임을 나누세요.'},
+    C05:{label:'결정 방식',good:'생각을 표현하고 결론을 내리는 방식이 자연스럽게 맞는 편입니다.',friction:'결론을 내리는 방식이 달라 같은 대화가 힘겨루기로 번질 수 있습니다.',reason:'두 사람이 판단하고 표현하는 방식이 얼마나 자연스럽게 맞는지 봅니다.',action:'결론이 다를 때는 누가 맞는지보다 결정 기준부터 맞추세요.'},
+    C06:{label:'대화 방식',good:'말을 주고받는 방식에서 자연스럽게 이어지는 부분이 있습니다.',friction:'말을 주고받는 방식이 맞부딪혀 같은 이야기를 반복할 수 있습니다.',reason:'서로의 표현 방식이 자연스럽게 이어지는지, 바로 맞서는지 봅니다.',action:'감정이 올라오면 결론부터 내리지 말고 사실과 원하는 것을 따로 말하세요.'},
+    C07:{label:'생활 습관',good:'함께 지낼 때 자연스럽게 맞는 생활 습관이 있습니다.',friction:'가까이 지낼수록 생활 습관의 차이가 불편해질 수 있습니다.',reason:'일상에서 함께 움직일 때 편한 지점이 있는지 봅니다.',action:'연락·수면·식사·집안일처럼 반복되는 생활 기준을 먼저 맞추세요.'},
+    C08:{label:'함께 있을 때 커지는 힘',good:'둘이 함께할 때 좋은 행동 방식이 더 쉽게 살아날 수 있습니다.',friction:'둘이 함께 있을 때 한쪽 성향이 지나치게 커질 수 있습니다.',reason:'함께 움직일 때 특정 분위기나 행동 방식이 더 강해지는지 봅니다.',action:'둘이 있을 때 반복해서 과해지는 행동이 있다면 속도와 횟수를 줄이세요.'},
+    C09:{label:'정면으로 부딪히는 부분',good:'서로 다른 방식이 오히려 변화를 만드는 계기가 될 수 있습니다.',friction:'서로 반대 방향으로 밀어붙여 같은 문제에서 정면으로 부딪힐 수 있습니다.',reason:'같은 상황에서 서로 반대 선택을 하기 쉬운 지점을 봅니다.',action:'반복해서 충돌하는 주제는 선택권과 결정권을 미리 나누세요.'},
+    C10:{label:'예민해지는 부분',good:'서로의 민감한 부분을 이해하면 세심하게 맞춰 갈 수 있습니다.',friction:'작은 불편이 쌓여 서로를 탓하는 방식으로 번질 수 있습니다.',reason:'가까운 사이에서 예민함이 반복될 수 있는 지점을 봅니다.',action:'문제가 커진 뒤 따지기보다 불편한 점을 작을 때 바로 말하세요.'},
+    C11:{label:'서운함이 쌓이는 부분',good:'서로 다른 습관을 인정하면 큰 문제 없이 조절할 수 있습니다.',friction:'사소한 약속이나 기대가 어긋나 서운함이 쌓일 수 있습니다.',reason:'겉으로는 작아 보여도 반복되면 관계를 피곤하게 만드는 지점을 봅니다.',action:'연락·시간·약속처럼 반복되는 기준은 애매하게 두지 마세요.'},
+    C12:{label:'가까운 관계의 생활 궁합',good:'가까워질수록 편안하게 맞는 생활 감각이 있습니다.',friction:'가까워질수록 서로 기대하는 생활 방식의 차이가 크게 느껴질 수 있습니다.',reason:'친밀한 관계에서 매일 반복되는 생활 감각이 맞는지 봅니다.',action:'감정만 확인하지 말고 생활비·시간·가족·연락 기준도 함께 맞추세요.'},
+    C13:{label:'서로에게 기대하는 역할',good:'서로에게 기대하는 역할이 자연스럽게 맞는 부분이 있습니다.',friction:'서로에게 기대하는 역할이 달라 같은 행동을 다르게 받아들일 수 있습니다.',reason:'상대를 어떤 역할로 기대하고 받아들이기 쉬운지 봅니다.',action:'상대가 알아서 해주길 기다리지 말고 원하는 역할을 직접 말하세요.'},
+    C14:{label:'잘하는 역할 나누기',good:'두 사람이 잘하는 역할이 달라 나눠 맡기 좋은 편입니다.',friction:'잘하는 일이 겹쳐 주도권 경쟁이 생길 수 있습니다.',reason:'일과 생활에서 각자 자연스럽게 잘 맡는 역할이 어떻게 다른지 봅니다.',action:'잘하는 일이 겹치면 경쟁하기보다 담당과 결정권을 나누세요.'},
+    C15:{label:'추진 속도',good:'한 사람이 밀고 다른 사람이 속도를 조절하며 균형을 잡을 수 있습니다.',friction:'두 사람이 일을 밀고 가는 속도가 달라 한쪽이 답답하거나 벅찰 수 있습니다.',reason:'결정하고 움직일 때 필요한 힘과 속도가 얼마나 다른지 봅니다.',action:'같은 속도로 움직이게 하기보다 각자 감당할 수 있는 속도를 인정하세요.'},
+    C16:{label:'관계를 쓰는 방식',good:'관계를 이어 가는 방식에서 서로에게 도움이 되는 부분이 있습니다.',friction:'관계를 유지하는 방식이 달라 좋은 의도도 부담으로 느껴질 수 있습니다.',reason:'가까워지고 거리를 두는 방식이 실제로 잘 맞는지 봅니다.',action:'연락 빈도와 혼자 있을 시간처럼 관계의 거리를 직접 맞추세요.'},
+    C17:{label:'요즘 생활 속도',good:'요즘 두 사람의 생활 속도가 비슷해 함께 결정하기가 비교적 편합니다.',friction:'요즘 두 사람의 여유와 생활 속도가 달라 같은 결정을 동시에 밀기 어렵습니다.',reason:'현재 각자가 감당하고 있는 일의 양과 변화 속도를 비교합니다.',action:'한 사람이 바쁠 때는 중요한 결정을 같은 시점에 강요하지 마세요.'},
+    C18:{label:'올해의 속도',good:'올해 두 사람이 비슷한 방향을 보고 움직이기 쉬운 편입니다.',friction:'올해는 같은 일이 두 사람에게 다르게 느껴질 수 있습니다.',reason:'같은 해의 변화가 각 사람에게 어떤 속도로 작용하는지 비교합니다.',action:'한 사람에게 좋은 시점이 상대에게도 똑같이 좋은 시점이라고 가정하지 마세요.'},
+    C19:{label:'현실 조건',good:'지금 관계를 이어 갈 현실 조건이 비교적 맞는 편입니다.',friction:'감정과 별개로 시간·돈·역할 같은 현실 조건을 먼저 맞춰야 합니다.',reason:'관계 유형에 따라 실제로 필요한 약속과 경계를 확인합니다.',action:'시간·돈·역할·연락 기준을 구체적으로 합의하세요.'}
+  };
+  function compatTone(status){return ['FRICTION','BURDEN','CLASH'].includes(status)?'friction':['SUPPORTIVE','COMPLEMENTARY','GOOD'].includes(status)?'good':'conditional'}
+  function plainCompatItem(d){const m=COMPAT_DIM_PLAIN[d?.dimension]||COMPAT_DIM_PLAIN.C19,t=compatTone(d?.status);return {label:m.label,status:t==='good'?'잘 맞는 점':t==='friction'?'맞춰야 할 점':'확인할 점',headline:m[t]||m.friction,reason:m.reason,action:m.action||d?.practicalAction||'기대와 역할을 말로 확인하세요.'};}
+  function plainCompatHero(s){const map={A_COMPLEMENT:['서로 잘 맞는 부분이 분명한 관계','서로 도움이 되는 부분이 분명합니다. 역할과 기대를 말로 맞추면 장점을 오래 쓰기 좋습니다.'],B_ONE_ADJUSTMENT:['한 가지 반복되는 차이를 맞추면 편한 관계','대체로 맞춰 갈 수 있지만 반복해서 부딪힐 한 지점이 있습니다. 그 부분의 규칙을 미리 정하면 훨씬 편합니다.'],C_BOUNDARY_FIRST:['생활 규칙을 먼저 맞춰야 편한 관계','부딪힐 수 있는 지점이 여러 군데 보입니다. 관계가 나쁘다는 뜻이 아니라 시간·돈·역할·대화 방식을 미리 정하는 게 중요합니다.'],D_MIXED:['잘 맞는 점과 맞춰야 할 점이 함께 있는 관계','서로 도움이 되는 부분도 있고 반복해서 부딪힐 부분도 있습니다. 좋은 점을 살리려면 갈등이 생기는 주제의 규칙부터 맞추세요.'],E_SUPPORTING_COMPLEMENT:['서로의 장점을 천천히 살려 볼 관계','크게 부딪히는 신호보다 서로 보태 줄 수 있는 부분이 더 보입니다. 실제 생활의 약속이 잘 맞을수록 장점이 살아납니다.'],E_CONTEXT_SAFE:['차이를 말로 맞추면 편해지는 관계','잘 맞는 점도 있지만 생활 방식의 차이가 반복될 수 있습니다. 특히 시간·돈·역할처럼 자주 부딪히는 기준을 말로 맞추세요.'],NEUTRAL:['실제 생활에서 맞춰 보며 판단할 관계','사주만으로 강한 장점이나 충돌을 단정하기 어렵습니다. 함께 지내며 편한 점과 불편한 점을 실제 경험으로 확인하세요.']};return map[s?.archetype]||map.NEUTRAL}
+  function applyCompat(){
+    const root=document.getElementById('compatibilityCard');if(!root)return;const r=root.querySelector('#compatResult');if(!r)return;
+    const last=window.SajuGyeolCompatibility?.getLast?.(),sum=last?.summary;if(sum){
+      const hero=plainCompatHero(sum),hs=r.querySelector('.compat-hero>strong'),hp=r.querySelector('.compat-hero>p');if(hs)hs.textContent=hero[0];if(hp)hp.textContent=hero[1];
+      const kws=[...r.querySelectorAll('.compat-keyword')];['감정·생활','잘 맞는 점','맞춰야 할 점','생활 리듬'].forEach((t,i)=>{if(kws[i])kws[i].textContent=t});
+      const groups=[['.compat-section-good .compat-action',sum.good||[]],['.compat-section-friction .compat-action',sum.friction||[]],['.compat-section-need .compat-action',sum.conditional||[]]];
+      groups.forEach(([sel,data])=>{[...r.querySelectorAll(sel)].forEach((card,i)=>{const d=data[i];if(!d)return;const x=plainCompatItem(d),sp=card.querySelector('.compat-action-top span'),em=card.querySelector('.compat-action-top em'),b=card.querySelector(':scope>b'),why=card.querySelector('.compat-reason'),doP=card.querySelector('.compat-do');if(sp)sp.textContent=x.label;if(em)em.textContent=x.status;if(b)b.textContent=x.headline;if(why)why.textContent=x.reason;if(doP)doP.innerHTML=`<strong>이렇게 해보세요</strong>${x.action}`;});});
+      const titles=[['.compat-section-good .compat-section-title p','두 사람 사이에서 자연스럽게 도움이 되는 부분입니다.'],['.compat-section-friction .compat-section-title p','반복되면 피곤해질 수 있어 미리 맞춰 둘 부분입니다.'],['.compat-section-need .compat-section-title p','상황에 따라 달라질 수 있어 직접 확인할 부분입니다.']];titles.forEach(([sel,t])=>{const e=r.querySelector(sel);if(e)e.textContent=t});
+      /* C17 remains intact in semantic state/evidence; translate only the default-visible current-period presentation. */
+      r.querySelectorAll('.compat-current-grid .wide p,.compat-action').forEach(node=>replaceText(node,[
+        [/두 사람의 현재 대운 속도가 비슷한 편입니다\./g,'요즘 두 사람의 장기 흐름 속도가 비슷한 편입니다.'],
+        [/두 사람 모두 현재 대운에서 움직일 여지가 있는 편입니다\./g,'요즘 두 사람 모두 움직일 여지가 있는 편입니다.'],
+        [/현재 대운 속도/g,'요즘 장기 흐름 속도'],[/현재 대운에서/g,'요즘 장기 흐름에서']
+      ]));
+      replaceText(r,[[/각자의 10년 흐름·올해 흐름은 각자 원국에 평가한 뒤 속도 차이만 비교합니다\./g,'요즘 두 사람이 감당하는 일의 양과 생활 속도를 비교합니다.'],[/현재 첫 번째 사람과 두 번째 사람의 여유와 추진 속도가 다릅니다\./g,'요즘 두 사람이 감당할 수 있는 일의 양과 움직이는 속도가 다릅니다.'],[/올해 두 사람에게 같은 시기가 서로 다르게 작용합니다\./g,'올해 같은 변화도 두 사람에게는 다르게 느껴질 수 있습니다.'],[/속도와 역할 조율/g,'서로 속도 맞추기'],[/조정 필요/g,'속도 조절 필요'],[/여유 확보 필요/g,'무리하지 않기'],[/오행·조후·일간·지지·강약·현재 운 등 19개 판단축/g,'전문가용 계산 근거와 관계 분석'],[/궁합은 띠·일지·합충·신살·강약 한 항목으로/g,'궁합은 사주 한 가지 신호만으로']]);
+    }
+    replaceText(root,[[/RELATION COMPASS · 궁합/g,'두 사람 관계 · 궁합'],[/RELATION COMPASS · ([^\n]+)/g,'두 사람 관계 · $1'],[/좋고 나쁨을 한 점수로 정하지 않고, 서로 맞물리는 부분과 조율할 지점을 현실적인 관계 언어로 살펴봅니다\./g,'잘 맞는 점과 자주 부딪힐 점, 어떻게 맞춰 가면 좋은지를 함께 봅니다.'],[/같은 계산도 관계에 따라 현실 조언의 우선순위가 달라집니다\./g,'연인·가족·동료처럼 관계가 달라지면 중요하게 볼 점도 달라집니다.'],[/두 사람의 구조와 관계 흐름을 함께 읽습니다/g,'잘 맞는 점과 맞춰야 할 점을 함께 봅니다'],[/두 명식을 같은 기준으로 비교합니다\./g,'두 사람의 사주를 같은 기준으로 비교합니다.'],[/독립 보완 신호/g,'잘 맞는 점'],[/독립 조율 신호/g,'맞춰야 할 점'],[/각자의 대운·세운은 각자 원국에 평가한 뒤 속도 차이만 비교합니다\./g,'요즘 두 사람이 감당하는 일의 양과 생활 속도를 비교합니다.'],[/전문 Rule · provenance 보기/g,'더 깊은 계산 근거 보기'],[/전문 근거/g,'세부 계산 근거']]);const tech=r.querySelector('.compat-tech-details>summary b');if(tech)tech.textContent='세부 명리 분석 보기';
+  }
+  function applyAll(){applyHome();applyConsult();applyLife();applyBigFlow();applyFortune();applyCompat();}
+  document.addEventListener('submit',e=>{if(e.target?.id==='birthForm'||e.target?.id==='compatForm'){setTimeout(applyAll,220);setTimeout(applyAll,520)}},true);
+  document.addEventListener('click',e=>{if(e.target.closest?.('.sg-bottom-nav,[data-app-next],[data-bigflow-year],[data-domain],[data-choice],[data-consult-field],#shortFortune [data-range]')){setTimeout(applyAll,100);setTimeout(applyAll,360)}},true);
+  document.addEventListener('change',e=>{if(['fortuneDate','compatRelationType','purposeSelect'].includes(e.target?.id)||e.target?.classList?.contains('purpose-date')){setTimeout(applyAll,120);setTimeout(applyAll,360)}},true);
+  setTimeout(applyAll,100);
+})();
+</script>
+
 <script id="v0155ExpertProfessionalDesignBehavior">
 (function(){
   'use strict';
