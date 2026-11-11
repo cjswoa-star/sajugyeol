@@ -2851,6 +2851,41 @@ html body.app-result-open #resultScreen.screen.active > :is(
     min-height: 62px !important;
   }
 }
+
+/* Remove duplicated per-page identities: the shared profile and time-basis chip
+   now provide the same context across all seven pages. */
+html body.app-result-open #practicalConsultCard .consult-compact-identity,
+html body.app-result-open #domainCard .life-compact-identity,
+html body.app-result-open #shortFortune .fortune-compact-identity {
+  display: none !important;
+}
+
+/* The once-hidden shared time-basis disclosure needs legible styling in every mode. */
+html body.app-result-open #resultScreen.screen.active > #timeBasisNotice.sg-time-basis-chip:not([hidden]) {
+  background: linear-gradient(145deg, rgba(8, 25, 48, .97), rgba(24, 34, 73, .95)) !important;
+  border: 1px solid rgba(225, 181, 91, .38) !important;
+  border-radius: 14px !important;
+  color: #f4e7c8 !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .14) !important;
+}
+html body.app-result-open #resultScreen.screen.active > #timeBasisNotice.sg-time-basis-chip > summary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #f4e7c8 !important;
+  font-size: 12px !important;
+}
+html body.app-result-open #resultScreen.screen.active > #timeBasisNotice.sg-time-basis-chip > summary > b {
+  flex: 1 1 auto !important;
+  color: #f4e7c8 !important;
+}
+html body.app-result-open #resultScreen.screen.active > #timeBasisNotice.sg-time-basis-chip > summary > em,
+html body.app-result-open #resultScreen.screen.active > #timeBasisNotice.sg-time-basis-chip > summary > span {
+  color: #e8c177 !important;
+}
+html body.app-result-open #resultScreen.screen.active > #timeBasisNotice.sg-time-basis-chip .sg-time-basis-body {
+  color: #e9e2d5 !important;
+}
 </style>
 </head>
 <!-- v10.2: external loader removed; verified logo embedded; calculation engine unchanged -->
